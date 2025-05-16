@@ -1,0 +1,41 @@
+{
+  "name": "travel-plan",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "tauri": "tauri"
+  },
+  "dependencies": {
+    "@tailwindcss/vite": "^4.1.6",
+    "@tauri-apps/api": "^2",
+    "@tauri-apps/plugin-opener": "^2",
+    "@vant/touch-emulator": "^1.4.0",
+    "@vueuse/core": "^13.1.0",
+    "lodash": "^4.17.21",
+    "nanoid": "^5.1.5",
+    "pinia": "^3.0.2",
+    "tailwindcss": "^4.1.6",
+    "vant": "^4.9.19",
+    "vue": "^3.5.13",
+    "vue-router": "4",
+    "vue-tianditu2": "^3.0.1"
+  },
+  "devDependencies": {
+    "@antfu/eslint-config": "^4.13.0",
+    "@tauri-apps/cli": "^2",
+    "@types/lodash": "^4.17.16",
+    "@types/node": "^22.15.17",
+    "@vant/auto-import-resolver": "^1.3.0",
+    "@vitejs/plugin-vue": "^5.2.1",
+    "less": "^4.3.0",
+    "typescript": "~5.6.2",
+    "unplugin-auto-import": "^19.2.0",
+    "unplugin-vue-components": "^28.5.0",
+    "vite": "^6.0.3",
+    "vue-tsc": "^2.1.10"
+  }
+}
