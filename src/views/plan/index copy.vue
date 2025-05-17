@@ -31,7 +31,7 @@ async function handleRefresh() {
     firstTodayPlanOffset = firstTodayPlanRef.value.offsetTop;
   }
 
-  // 2. 显示过期计划
+  // 2. 显示结束计划
   showPlansBeforeToday.value = true;
   isLoading.value = false;
 
@@ -58,10 +58,10 @@ onMounted(() => {
     <van-pull-refresh
       v-model="isLoading"
       :pulling-text="
-        showPlansBeforeToday ? '没有更早的计划了' : '下拉显示已过期计划'
+        showPlansBeforeToday ? '没有更早的计划了' : '下拉显示已结束计划'
       "
       :loosing-text="
-        showPlansBeforeToday ? '没有更早的计划了' : '释放显示已过期计划'
+        showPlansBeforeToday ? '没有更早的计划了' : '释放显示已结束计划'
       "
       @refresh="handleRefresh"
       class="p-4 w-full h-full !overflow-auto thin-scrollbar pull-refresh-container"

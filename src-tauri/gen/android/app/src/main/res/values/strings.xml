@@ -1,4 +1,4 @@
 <resources>
-    <string name="app_name">travel-plan</string>
-    <string name="main_activity_title">travel-plan</string>
+  <string name="app_name">旅行计划</string>
+  <string name="main_activity_title">旅行计划</string>
 </resources>

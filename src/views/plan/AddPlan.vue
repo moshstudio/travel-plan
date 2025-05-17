@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, reactive, onMounted } from "vue";
 import { useStore } from "@/store";
-import { showNotify, showToast } from "vant";
+import { showToast } from "vant";
 import { getAddressByCoordinate } from "@/api/tdt.ts";
 import { nanoid } from "nanoid";
 import router from "@/router";
@@ -131,11 +131,11 @@ const onSubmit = () => {
     !form.endDate ||
     !form.endTime
   ) {
-    showNotify("请填写必填信息");
+    showToast("请填写必填信息");
     return;
   }
   if (!store.positionSelectAddress) {
-    showNotify("请选择目的地");
+    showToast("请选择目的地");
     return;
   }
 
@@ -153,7 +153,7 @@ const onSubmit = () => {
   );
 
   if (startDateTime > endDateTime) {
-    showNotify("结束时间必须晚于开始时间");
+    showToast("结束时间必须晚于开始时间");
     return;
   }
 
@@ -330,4 +330,8 @@ onMounted(() => {
   </div>
 </template>
 
-<style scoped lang="less"></style>
+<style scoped lang="less">
+:deep(.van-cell__title) {
+  flex: none;
+}
+</style>

@@ -22,13 +22,11 @@ declare module 'vue' {
     VanField: typeof import('vant/es')['Field']
     VanFloatingBubble: typeof import('vant/es')['FloatingBubble']
     VanIcon: typeof import('vant/es')['Icon']
-    VanList: typeof import('vant/es')['List']
     VanNavBar: typeof import('vant/es')['NavBar']
     VanPickerGroup: typeof import('vant/es')['PickerGroup']
     VanPopup: typeof import('vant/es')['Popup']
     VanPullRefresh: typeof import('vant/es')['PullRefresh']
     VanSearch: typeof import('vant/es')['Search']
-    VanSticky: typeof import('vant/es')['Sticky']
     VanTimePicker: typeof import('vant/es')['TimePicker']
   }
 }

@@ -1,9 +1,11 @@
 <script setup>
 import _ from "lodash";
 import { useStore } from "@/store";
-import { ref, reactive } from "vue";
+import { ref, reactive, onActivated, onMounted } from "vue";
 import { TdtMap, TdtMarker } from "vue-tianditu2";
 import router from "@/router";
+import LocationControl from "@/components/map/geolocationControl";
+import { showConfirmDialog, showDialog, showToast } from "vant";
 
 const store = useStore();
 
@@ -24,8 +26,40 @@ const hideAddressOptions = () => {
     showAddressOptions.value = false;
   }, 200);
 };
-function mapInit(map) {
+async function mapInit(map) {
   tdtMap.value = map;
+  map.addControl(new T.Control.Zoom());
+  // map.addControl(new T.Control.Scale());
+  new LocationControl({
+    map: map,
+    position: "bottom-right",
+    onSuccess: (event) => {
+      let geocode = new T.Geocoder();
+      geocode.getLocation(event.lnglat, (result) => {
+        console.log(result);
+
+        if (result.getStatus() == 0) {
+          selectedAddress.value = {
+            address: result.getAddress(),
+            lng: result.location.lon,
+            lat: result.location.lat,
+          };
+          searchValue.value = result.getAddress();
+          addNewtdtMarker(result.location.lon, result.location.lat);
+          tdtMap.value.centerAndZoom(
+            new T.LngLat(result.location.lon, result.location.lat),
+            16
+          );
+        } else {
+          map.clearOverLays();
+        }
+      });
+    },
+    onError: (error) => {
+      console.error("定位失败:", error.message);
+    },
+  });
+
   if (store.positionSelectAddress) {
     selectedAddress.value = store.positionSelectAddress;
     searchValue.value = store.positionSelectAddress.address;
@@ -36,6 +70,10 @@ function mapInit(map) {
       ),
       16
     );
+    addNewtdtMarker(
+      store.positionSelectAddress.lng,
+      store.positionSelectAddress.lat
+    );
   }
   function searchResult(result) {
     if (result.getStatus() == 0) {
@@ -45,10 +83,7 @@ function mapInit(map) {
         lat: result.location.lat,
       };
       searchValue.value = result.getAddress();
-      tdtMap.value.clearOverLays();
-      tdtMap.value.addOverLay(
-        new T.Marker(new T.LngLat(result.location.lon, result.location.lat))
-      );
+      addNewtdtMarker(result.location.lon, result.location.lat);
     } else {
       map.clearOverLays();
     }
@@ -74,7 +109,7 @@ const onSearch = _.debounce((value) => {
         });
       } else {
         addressOptions.value.push({
-          address: item.address + item.name,
+          address: item.address + " " + item.name,
           lng: Number(lng),
           lat: Number(lat),
         });
@@ -83,13 +118,13 @@ const onSearch = _.debounce((value) => {
   }
 
   const config = {
-    pageCapacity: 10, //每页显示的数量
+    pageCapacity: 15, //每页显示的数量
     onSearchComplete: localSearchResult, //接收数据的回调函数
   };
   /**搜索类型,1表示普通搜索;2表示视野内搜索;4表示普通建议词搜索;5表示公交规划建议词搜索;7表示 纯地名搜索(不搜公交线）;10表示拉框搜索 */
   let localsearch = new T.LocalSearch(tdtMap.value, config);
   localsearch.search(searchValue.value, 4);
-}, 1000);
+}, 800);
 
 function selectLocation(address) {
   searchValue.value = address.address;
@@ -98,14 +133,18 @@ function selectLocation(address) {
     new T.LngLat(address.lng, address.lat),
     state.zoom
   );
+  addNewtdtMarker(address.lng, address.lat);
+  addressOptions.value = [];
+  showAddressOptions.value = false;
+}
+
+function addNewtdtMarker(lng, lat) {
   if (tdtMapMarker.value) {
     tdtMap.value.removeOverLay(tdtMapMarker.value);
   }
-  tdtMapMarker.value = new T.Marker(new T.LngLat(address.lng, address.lat));
-
+  tdtMap.value.clearOverLays();
+  tdtMapMarker.value = new T.Marker(new T.LngLat(lng, lat));
   tdtMap.value.addOverLay(tdtMapMarker.value);
-  addressOptions.value = [];
-  showAddressOptions.value = false;
 }
 
 function onSelectAddress() {
@@ -121,6 +160,24 @@ function clearSelect() {
   }
   addressOptions.value = [];
 }
+
+onActivated(() => {
+  if (tdtMap.value && store.positionSelectAddress) {
+    selectedAddress.value = store.positionSelectAddress;
+    searchValue.value = store.positionSelectAddress.address;
+    tdtMap.value.centerAndZoom(
+      new T.LngLat(
+        store.positionSelectAddress.lng,
+        store.positionSelectAddress.lat
+      ),
+      16
+    );
+    addNewtdtMarker(
+      store.positionSelectAddress.lng,
+      store.positionSelectAddress.lat
+    );
+  }
+});
 </script>
 
 <template>
@@ -145,6 +202,7 @@ function clearSelect() {
         @update:model-value="onSearch"
         placeholder="请输入搜索关键词"
         shape="round"
+        class="h-[50px]"
         :clearable="false"
         @blur="hideAddressOptions"
       >
@@ -158,7 +216,7 @@ function clearSelect() {
       </van-search>
       <div
         v-if="showAddressOptions"
-        class="absolute top-0 left-0 translate-y-[50px] w-full max-h-[300px] overflow-auto z-401"
+        class="absolute top-[50px] left-0 right-0 w-full max-h-[260px] overflow-auto z-1001 thin-scrollbar"
       >
         <van-cell-group class="px-4">
           <van-cell

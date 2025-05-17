@@ -29,6 +29,18 @@ export const useStore = defineStore("store", () => {
     plans.value.push(plan);
     refreshPlans();
   };
+  const updateTravelPlan = (plan: TravelPlan) => {
+    plans.value.forEach((p) => {
+      if (p.id === plan.id) {
+        Object.assign(p, plan);
+      }
+    });
+    refreshPlans();
+  };
+  const removePlan = (planId: string) => {
+    plans.value = plans.value.filter((p) => p.id !== planId);
+    refreshPlans();
+  };
 
   const refreshPlans = () => {
     plans.value = _.sortBy(plans.value, ["startTime", "endTime"]);
@@ -44,6 +56,8 @@ export const useStore = defineStore("store", () => {
     plansFromToday,
     positionSelectAddress,
     addTravelPlan,
+    updateTravelPlan,
+    removePlan,
     refreshPlans,
   };
 });

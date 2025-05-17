@@ -3,6 +3,7 @@
 @layer utilities {
   .thin-scrollbar {
     scrollbar-width: thin;
+    scrollbar-color: #9ca3afc9 transparent; /* thumb color and transparent track */
   }
   .thin-scrollbar::-webkit-scrollbar {
     width: 4px;
@@ -15,10 +16,16 @@
   .thin-scrollbar::-webkit-scrollbar-track {
     background-color: transparent;
   }
+  .thin-scrollbar::-webkit-scrollbar-button {
+    display: none; /* 隐藏上下的小箭头按钮 */
+  }
 
   /* 深色模式版本 */
   .dark .thin-scrollbar-dark::-webkit-scrollbar-thumb {
     background-color: #4b5563b7; /* gray-600 */
+  }
+  .dark .thin-scrollbar-dark::-webkit-scrollbar-button {
+    display: none;
   }
 }
 
