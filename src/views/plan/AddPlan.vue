@@ -1,12 +1,15 @@
 <script setup lang="ts">
-import { ref, reactive, onMounted } from "vue";
+import { ref, reactive, onMounted, computed } from "vue";
 import { useStore } from "@/store";
 import { showFailToast, showSuccessToast } from "vant";
 import { getCurrentLngLat, getLngLatAddress } from "@/api/tdt.ts";
-import { nanoid } from "nanoid";
 import router from "@/router";
+import { storeToRefs } from "pinia";
+import { TravelPlanType } from "@/data/TravelPlan";
+import PrioritySelector from "@/components/PrioritySelector.vue";
 
 const store = useStore();
+const { currentTravel } = storeToRefs(store);
 const now = new Date();
 const tomorrow = new Date(now);
 tomorrow.setDate(now.getDate() + 1);
@@ -28,6 +31,7 @@ const form = reactive({
   ],
   endTime: ["00", "00"],
   notes: "",
+  priority: "medium" as "low" | "medium" | "high",
 });
 
 // 日期时间选择器相关状态
@@ -147,15 +151,23 @@ const onSubmit = () => {
     showFailToast("结束时间必须晚于开始时间");
     return;
   }
+  if (!currentTravel.value) {
+    showFailToast("请先创建旅行");
+    return;
+  }
 
   // 这里可以调用store的action来保存计划
-  const planData = {
-    id: nanoid(),
-    name: form.name,
-    startTime: startDateTime.getTime(),
-    endTime: endDateTime.getTime(),
-    location: store.positionSelectAddress,
+  const planData: Omit<TravelPlanType, "id" | "travelPlanId"> = {
+    travelId: currentTravel.value.travelId,
+    title: form.name,
     description: form.notes,
+    startDateTime: startDateTime.getTime(),
+    endDateTime: endDateTime.getTime(),
+    timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+    status: "planned",
+    priority: "medium",
+    version: 1,
+    location: store.positionSelectAddress,
     createdAt: Date.now(),
     updatedAt: Date.now(),
   };
@@ -175,9 +187,11 @@ onMounted(async () => {
     if (lonlat) {
       const address = await getLngLatAddress(lonlat);
       store.positionSelectAddress = {
-        address: address,
-        lng: lonlat.lng,
-        lat: lonlat.lat,
+        name: address,
+        coordinates: {
+          lng: lonlat.lng,
+          lat: lonlat.lat,
+        },
       };
     }
   }
@@ -194,7 +208,7 @@ onMounted(async () => {
       @click-left="back"
     />
 
-    <div class="flex-grow w-full h-full p-4 overflow-auto">
+    <div class="flex-grow w-full h-full p-2 overflow-auto">
       <van-cell-group inset>
         <van-field
           v-model="form.name"
@@ -245,9 +259,10 @@ onMounted(async () => {
             </van-button>
           </template>
         </van-cell>
+        <PrioritySelector v-model="form.priority" />
         <van-cell
           title="目的地"
-          :value="store.positionSelectAddress?.address"
+          :value="store.positionSelectAddress?.name || ''"
           clickable
           is-link
           @click="() => $router.push({ name: 'PositionSelect' })"
@@ -324,5 +339,11 @@ onMounted(async () => {
 <style scoped lang="less">
 :deep(.van-cell__title) {
   flex: none;
+}
+:deep(.van-dropdown-menu__bar) {
+  box-shadow: none;
+}
+:deep(.van-dropdown-item__content) {
+  max-height: 200px;
 }
 </style>
