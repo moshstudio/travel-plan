@@ -1,6 +1,6 @@
-import { PlanStatus, TravelPlan } from "@/data/TravelPlan";
+import { PlanStatus, TravelPlanType } from "@/data/TravelPlan";
 
-export function getPlanStatus(plan: TravelPlan, now: number): PlanStatus {
+export function getPlanStatus(plan: TravelPlanType, now: number): PlanStatus {
   if (plan.isManuallyCompleted) return "completed";
 
   const oneDay = 24 * 60 * 60 * 1000; // 一天的毫秒数
@@ -11,7 +11,10 @@ export function getPlanStatus(plan: TravelPlan, now: number): PlanStatus {
   return "not-started";
 }
 
-export function getProgressPercentage(plan: TravelPlan, now: number): number {
+export function getProgressPercentage(
+  plan: TravelPlanType,
+  now: number
+): number {
   if (now < plan.startTime) return 0;
   if (now > plan.endTime) return 100;
 

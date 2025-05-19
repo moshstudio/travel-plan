@@ -9,6 +9,9 @@ import router from "@/router";
 import "@vant/touch-emulator";
 import "vant/es/date-picker/style";
 import "vant/es/time-picker/style";
+import "vant/es/toast/style";
+import "vant/es/dialog/style";
+import "vant/es/notify/style";
 import { install as installTianDiTu } from "vue-tianditu2";
 const app = createApp(App);
 app

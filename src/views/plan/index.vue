@@ -4,6 +4,8 @@ import PlanCard from "@/components/travelPlan/PlanCard.vue";
 import { useStore } from "@/store";
 import { storeToRefs } from "pinia";
 import { useRouter } from "vue-router";
+import { getProxyUrl } from "@/utils/proxyUrl";
+import { tdtUrl } from "@/constants/tdt";
 
 const router = useRouter();
 const store = useStore();
@@ -31,6 +33,28 @@ async function handleRefresh() {
     .querySelector(".current-plans-section")
     ?.scrollIntoView({ behavior: "smooth" });
 }
+function loadTianDiTuAPI() {
+  return new Promise<void>(async (resolve, reject) => {
+    const script = document.createElement("script");
+    const url = await getProxyUrl(tdtUrl);
+    script.src = url!;
+    script.type = "text/javascript";
+    script.onload = () => {
+      console.log("天地图 API 加载成功");
+      resolve();
+    };
+
+    script.onerror = () => {
+      console.error("天地图 API 加载失败");
+      reject(new Error("天地图 API 加载失败"));
+    };
+
+    document.head.appendChild(script);
+  });
+}
+onMounted(() => {
+  loadTianDiTuAPI();
+});
 </script>
 
 <template>

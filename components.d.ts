@@ -8,6 +8,7 @@ export {}
 /* prettier-ignore */
 declare module 'vue' {
   export interface GlobalComponents {
+    copy: typeof import('./src/components/map/PositionSelect copy.vue')['default']
     PlanCard: typeof import('./src/components/travelPlan/PlanCard.vue')['default']
     PositionSelect: typeof import('./src/components/map/PositionSelect.vue')['default']
     RouterLink: typeof import('vue-router')['RouterLink']

@@ -112,13 +112,13 @@
 <script setup lang="ts">
 import { computed, ref } from "vue";
 import { getPlanStatus, getProgressPercentage } from "@/utils/planUtils";
-import { TravelPlan } from "@/data/TravelPlan";
+import { TravelPlanType } from "@/data/TravelPlan";
 import { useStore } from "@/store";
 import { storeToRefs } from "pinia";
 import router from "@/router";
 
 const props = defineProps<{
-  plan: TravelPlan;
+  plan: TravelPlanType;
 }>();
 
 const emit = defineEmits(["update-plan", "cancel-plan"]);

@@ -1,24 +1,35 @@
-<script setup>
+<script setup lang="ts">
+import "ol/ol.css";
+import "ol-ext/dist/ol-ext.css";
 import _ from "lodash";
 import { useStore } from "@/store";
-import { ref, reactive, onActivated, onMounted } from "vue";
-import { TdtMap, TdtMarker } from "vue-tianditu2";
+import { ref, onActivated, onMounted } from "vue";
 import router from "@/router";
-import LocationControl from "@/components/map/geolocationControl";
-import { showConfirmDialog, showDialog, showToast } from "vant";
+import { fromLonLat, toLonLat } from "ol/proj";
+import Map from "ol/Map";
+import View from "ol/View";
+import TileLayer from "ol/layer/Tile";
+import XYZ from "ol/source/XYZ";
+import {
+  tdtXYZPoxyVECUrl,
+  tdtXYZPoxyCVAUrl,
+  getLngLatAddress,
+  tdtSearch,
+} from "@/api/tdt";
+
+import Placemark from "ol-ext/overlay/Placemark";
+import GeolocationButton from "ol-ext/control/GeolocationButton";
+import { AddressType } from "@/data/address";
 
 const store = useStore();
 
 const searchValue = ref("");
-const tdtMap = ref();
-const tdtMapMarker = ref();
-const state = reactive({
-  center: [116.3976, 39.9035],
-  zoom: 16,
-});
+const map = ref<Map>();
+const placemark = ref<Placemark>();
+const locationButton = ref<GeolocationButton>();
 
 const selectedAddress = ref();
-const addressOptions = ref([]);
+const addressOptions = ref<AddressType[]>([]);
 const showAddressOptions = ref(false);
 
 const hideAddressOptions = () => {
@@ -26,125 +37,86 @@ const hideAddressOptions = () => {
     showAddressOptions.value = false;
   }, 200);
 };
-async function mapInit(map) {
-  tdtMap.value = map;
-  map.addControl(new T.Control.Zoom());
-  // map.addControl(new T.Control.Scale());
-  new LocationControl({
-    map: map,
-    position: "bottom-right",
-    onSuccess: (event) => {
-      let geocode = new T.Geocoder();
-      geocode.getLocation(event.lnglat, (result) => {
-        console.log(result);
-
-        if (result.getStatus() == 0) {
-          selectedAddress.value = {
-            address: result.getAddress(),
-            lng: result.location.lon,
-            lat: result.location.lat,
-          };
-          searchValue.value = result.getAddress();
-          addNewtdtMarker(result.location.lon, result.location.lat);
-          tdtMap.value.centerAndZoom(
-            new T.LngLat(result.location.lon, result.location.lat),
-            16
-          );
-        } else {
-          map.clearOverLays();
-        }
-      });
-    },
-    onError: (error) => {
-      console.error("定位失败:", error.message);
-    },
+async function mapInit() {
+  placemark.value = new Placemark({
+    color: "#369",
+    contentColor: "#000",
+    onshow: function (position) {},
   });
-
-  if (store.positionSelectAddress) {
-    selectedAddress.value = store.positionSelectAddress;
-    searchValue.value = store.positionSelectAddress.address;
-    map.centerAndZoom(
-      new T.LngLat(
-        store.positionSelectAddress.lng,
-        store.positionSelectAddress.lat
-      ),
-      16
-    );
-    addNewtdtMarker(
-      store.positionSelectAddress.lng,
-      store.positionSelectAddress.lat
-    );
-  }
-  function searchResult(result) {
-    if (result.getStatus() == 0) {
+  locationButton.value = new GeolocationButton();
+  map.value = new Map({
+    target: "mapDiv",
+    layers: [
+      new TileLayer({
+        source: new XYZ({
+          url: await tdtXYZPoxyVECUrl(),
+          maxZoom: 17,
+        }),
+      }),
+      new TileLayer({
+        source: new XYZ({
+          url: await tdtXYZPoxyCVAUrl(),
+          maxZoom: 17,
+        }),
+      }),
+    ],
+    view: new View({
+      center: fromLonLat([116.3976, 39.9035]), // 北京
+      zoom: 14,
+      projection: "EPSG:3857",
+    }),
+    overlays: [placemark.value],
+    controls: [locationButton.value],
+  });
+  locationButton.value.on("position" as any, async function (e: any) {
+    if (e.coordinate) {
+      const lnglat = toLonLat(e.coordinate);
+      const address = await getLngLatAddress({
+        lng: lnglat[0],
+        lat: lnglat[1],
+      });
+      placemark.value?.hide();
+      searchValue.value = address;
       selectedAddress.value = {
-        address: result.getAddress(),
-        lng: result.location.lon,
-        lat: result.location.lat,
+        address,
+        lng: lnglat[0],
+        lat: lnglat[1],
       };
-      searchValue.value = result.getAddress();
-      addNewtdtMarker(result.location.lon, result.location.lat);
-    } else {
-      map.clearOverLays();
     }
-  }
-  let geocode = new T.Geocoder();
-  map.addEventListener("click", function (e) {
-    geocode.getLocation(e.lnglat, searchResult);
+  });
+  map.value.on("click", async function (e) {
+    placemark.value?.show(e.coordinate);
+    const lnglat = toLonLat(e.coordinate);
+    const address = await getLngLatAddress({ lng: lnglat[0], lat: lnglat[1] });
+    searchValue.value = address;
+    selectedAddress.value = {
+      address,
+      lng: lnglat[0],
+      lat: lnglat[1],
+    };
   });
 }
 
-const onSearch = _.debounce((value) => {
+const onSearch = _.debounce(async (value) => {
   if (!value) return;
   addressOptions.value = [];
-  function localSearchResult(result) {
-    result.suggests.forEach((item) => {
-      showAddressOptions.value = true;
-      const [lng, lat] = item.lonlat.split(",");
-      if (item.address === item.name) {
-        addressOptions.value.push({
-          address: item.name,
-          lng: Number(lng),
-          lat: Number(lat),
-        });
-      } else {
-        addressOptions.value.push({
-          address: item.address + " " + item.name,
-          lng: Number(lng),
-          lat: Number(lat),
-        });
-      }
-    });
-  }
-
-  const config = {
-    pageCapacity: 15, //每页显示的数量
-    onSearchComplete: localSearchResult, //接收数据的回调函数
-  };
-  /**搜索类型,1表示普通搜索;2表示视野内搜索;4表示普通建议词搜索;5表示公交规划建议词搜索;7表示 纯地名搜索(不搜公交线）;10表示拉框搜索 */
-  let localsearch = new T.LocalSearch(tdtMap.value, config);
-  localsearch.search(searchValue.value, 4);
+  addressOptions.value = await tdtSearch(value);
+  showAddressOptions.value = true;
 }, 800);
 
-function selectLocation(address) {
+function selectAddressOption(address: AddressType) {
   searchValue.value = address.address;
   selectedAddress.value = address;
-  tdtMap.value.centerAndZoom(
-    new T.LngLat(address.lng, address.lat),
-    state.zoom
+  map.value?.setView(
+    new View({
+      center: fromLonLat([address.lng, address.lat]),
+      zoom: 14,
+      projection: "EPSG:3857",
+    })
   );
-  addNewtdtMarker(address.lng, address.lat);
+  placemark.value?.show(fromLonLat([address.lng, address.lat]));
   addressOptions.value = [];
   showAddressOptions.value = false;
-}
-
-function addNewtdtMarker(lng, lat) {
-  if (tdtMapMarker.value) {
-    tdtMap.value.removeOverLay(tdtMapMarker.value);
-  }
-  tdtMap.value.clearOverLays();
-  tdtMapMarker.value = new T.Marker(new T.LngLat(lng, lat));
-  tdtMap.value.addOverLay(tdtMapMarker.value);
 }
 
 function onSelectAddress() {
@@ -155,26 +127,32 @@ function onSelectAddress() {
 function clearSelect() {
   searchValue.value = "";
   selectedAddress.value = null;
-  if (TdtMarker.value) {
-    tdtMapMarker.value.removeOverLay(tdtMapMarker.value);
-  }
+  placemark.value?.hide();
   addressOptions.value = [];
 }
 
-onActivated(() => {
-  if (tdtMap.value && store.positionSelectAddress) {
+onActivated(async () => {
+  if (!map.value) {
+    await mapInit();
+  }
+  if (store.positionSelectAddress && map.value) {
     selectedAddress.value = store.positionSelectAddress;
     searchValue.value = store.positionSelectAddress.address;
-    tdtMap.value.centerAndZoom(
-      new T.LngLat(
-        store.positionSelectAddress.lng,
-        store.positionSelectAddress.lat
-      ),
-      16
+    map.value.setView(
+      new View({
+        center: fromLonLat([
+          store.positionSelectAddress.lng,
+          store.positionSelectAddress.lat,
+        ]),
+        zoom: 14,
+        projection: "EPSG:3857",
+      })
     );
-    addNewtdtMarker(
-      store.positionSelectAddress.lng,
-      store.positionSelectAddress.lat
+    placemark.value?.show(
+      fromLonLat([
+        store.positionSelectAddress.lng,
+        store.positionSelectAddress.lat,
+      ])
     );
   }
 });
@@ -223,7 +201,7 @@ onActivated(() => {
             v-for="(address, index) in addressOptions"
             :key="index"
             :title="address.address"
-            @click="selectLocation(address)"
+            @click="selectAddressOption(address)"
             clickable
           >
           </van-cell>
@@ -231,12 +209,46 @@ onActivated(() => {
       </div>
     </div>
 
-    <TdtMap
+    <div
+      id="mapDiv"
+      class="w-full h-full"
+    ></div>
+
+    <!-- <TdtMap
       @init="mapInit"
       :center="state.center"
       :zoom="state.zoom"
-    ></TdtMap>
+    ></TdtMap> -->
   </div>
 </template>
 
-<style scoped lang="less"></style>
+<style scoped lang="less">
+/* 自定义标记样式 */
+.blue-cross-marker {
+  position: relative;
+  width: 30px;
+  height: 40px;
+}
+.blue-cross-marker::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 0;
+  height: 0;
+  border-left: 10px solid transparent;
+  border-right: 10px solid transparent;
+  border-bottom: 20px solid #4285f4;
+}
+.blue-cross-marker::after {
+  content: "+";
+  position: absolute;
+  top: 20px;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  color: #4285f4;
+  font-size: 16px;
+  font-weight: bold;
+}
+</style>

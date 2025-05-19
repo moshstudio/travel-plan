@@ -18,7 +18,7 @@ android {
     compileSdk = 34
     namespace = "com.travel_plan.app"
     defaultConfig {
-        manifestPlaceholders["usesCleartextTraffic"] = "false"
+        manifestPlaceholders["usesCleartextTraffic"] = "true"
         applicationId = "com.travel_plan.app"
         minSdk = 24
         targetSdk = 34

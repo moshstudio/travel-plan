@@ -19,7 +19,7 @@
       }
     ],
     "security": {
-      "csp": null,
+      "csp": "*",
       "capabilities": [],
       "dangerousDisableAssetCspModification": true
     }

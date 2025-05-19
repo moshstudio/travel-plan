@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { ref, reactive, onMounted } from "vue";
 import { useStore } from "@/store";
-import { showToast } from "vant";
-import { getAddressByCoordinate } from "@/api/tdt.ts";
+import { showFailToast, showSuccessToast } from "vant";
+import { getCurrentLngLat, getLngLatAddress } from "@/api/tdt.ts";
 import { nanoid } from "nanoid";
 import router from "@/router";
 
@@ -11,16 +11,7 @@ const now = new Date();
 const tomorrow = new Date(now);
 tomorrow.setDate(now.getDate() + 1);
 const nextDay = tomorrow;
-console.log(now.toLocaleString());
-console.log(now.toLocaleDateString());
-console.log([
-  String(now.getFullYear()),
-  String(now.getMonth()),
-  String(now.getDay()),
-]);
 
-console.log(nextDay.toLocaleString());
-console.log(nextDay.toLocaleDateString());
 // 表单数据
 const form = reactive({
   name: "",
@@ -131,11 +122,11 @@ const onSubmit = () => {
     !form.endDate ||
     !form.endTime
   ) {
-    showToast("请填写必填信息");
+    showFailToast("请填写必填信息");
     return;
   }
   if (!store.positionSelectAddress) {
-    showToast("请选择目的地");
+    showFailToast("请选择目的地");
     return;
   }
 
@@ -153,7 +144,7 @@ const onSubmit = () => {
   );
 
   if (startDateTime > endDateTime) {
-    showToast("结束时间必须晚于开始时间");
+    showFailToast("结束时间必须晚于开始时间");
     return;
   }
 
@@ -170,24 +161,24 @@ const onSubmit = () => {
   };
 
   store.addTravelPlan(planData);
-  showToast("计划创建成功");
-  router.back();
+  showSuccessToast("计划创建成功");
+  back();
 };
 
-onMounted(() => {
+const back = () => {
+  router.push({ name: "Plan" });
+};
+
+onMounted(async () => {
   if (!store.positionSelectAddress) {
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(function (position) {
-        var lng = position.coords.longitude;
-        var lat = position.coords.latitude;
-        getAddressByCoordinate(lng, lat, function (address) {
-          store.positionSelectAddress = {
-            address: address,
-            lng: lng,
-            lat: lat,
-          };
-        });
-      });
+    const lonlat = await getCurrentLngLat();
+    if (lonlat) {
+      const address = await getLngLatAddress(lonlat);
+      store.positionSelectAddress = {
+        address: address,
+        lng: lonlat.lng,
+        lat: lonlat.lat,
+      };
     }
   }
 });
@@ -200,7 +191,7 @@ onMounted(() => {
     <van-nav-bar
       title="添加旅行计划"
       left-arrow
-      @click-left="$router.back()"
+      @click-left="back"
     />
 
     <div class="flex-grow w-full h-full p-4 overflow-auto">

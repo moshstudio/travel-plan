@@ -30,7 +30,7 @@ const routes: RouteRecordRaw[] = [
   {
     path: "/position-select",
     name: "PositionSelect",
-    component: () => import("@/components/map/positionSelect.vue"),
+    component: () => import("@/components/map/PositionSelect.vue"),
   },
 ];
 

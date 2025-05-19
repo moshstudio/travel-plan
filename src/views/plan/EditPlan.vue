@@ -2,8 +2,7 @@
 import { ref, reactive, computed, watch, onActivated } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { useStore } from "@/store";
-import { showToast } from "vant";
-import { getAddressByCoordinate } from "@/api/tdt.ts";
+import { showFailToast, showSuccessToast } from "vant";
 
 const store = useStore();
 const route = useRoute();
@@ -13,6 +12,8 @@ const planId = computed(() => route.params.id as string);
 const originalPlan = computed(() =>
   store.plans.find((plan) => plan.id === planId.value)
 );
+1411454241@qq.com
+1411454241@qq.com
 
 const form = reactive({
   name: "",
@@ -36,7 +37,7 @@ const maxDate = new Date(new Date().setFullYear(new Date().getFullYear() + 10));
 // Initialize or update form when planId changes
 const updateForm = () => {
   if (!originalPlan.value) {
-    showToast("未找到该旅行计划");
+    showFailToast("未找到该旅行计划");
     router.back();
     return;
   }
@@ -140,7 +141,7 @@ function adjustStartDateTime() {
 
 function onSubmit() {
   if (!form.name || !store.positionSelectAddress) {
-    showToast(form.name ? "请选择目的地" : "请填写必填信息");
+    showFailToast(form.name ? "请选择目的地" : "请填写必填信息");
     return;
   }
 
@@ -148,12 +149,12 @@ function onSubmit() {
   const end = new Date(formatDateTime(form.endDate, form.endTime));
 
   if (start > end) {
-    showToast("结束时间必须晚于开始时间");
+    showFailToast("结束时间必须晚于开始时间");
     return;
   }
 
   if (!originalPlan.value) {
-    showToast("旅行计划不存在");
+    showFailToast("旅行计划不存在");
     return;
   }
 
@@ -168,21 +169,16 @@ function onSubmit() {
   };
 
   store.updateTravelPlan(updatedPlan);
-  showToast("计划更新成功");
-  router.back();
+  showSuccessToast("计划更新成功");
+  back();
 }
 
-if (!store.positionSelectAddress) {
-  if (originalPlan.value?.location) {
-    store.positionSelectAddress = originalPlan.value.location;
-  } else if (navigator.geolocation) {
-    navigator.geolocation.getCurrentPosition((position) => {
-      const { longitude: lng, latitude: lat } = position.coords;
-      getAddressByCoordinate(lng, lat, (address) => {
-        store.positionSelectAddress = { address, lng, lat };
-      });
-    });
-  }
+const back = () => {
+  router.push({ name: "Plan" });
+};
+
+if (originalPlan.value?.location) {
+  store.positionSelectAddress = originalPlan.value.location;
 }
 </script>
 
@@ -191,7 +187,7 @@ if (!store.positionSelectAddress) {
     <van-nav-bar
       title="编辑旅行计划"
       left-arrow
-      @click-left="router.back()"
+      @click-left="back"
     />
 
     <div class="content">

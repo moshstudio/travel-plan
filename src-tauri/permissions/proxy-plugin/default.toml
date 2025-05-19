@@ -1,0 +1,7 @@
+[default]
+description = "Default permissions for the plugin"
+permissions = ["allow-get-proxy-url", "allow-get-proxy-port"]
+
+[allow]
+http = ['http://*']
+https = ['https://*']
