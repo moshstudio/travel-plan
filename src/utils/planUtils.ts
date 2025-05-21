@@ -1,25 +1,47 @@
-import { PlanStatus, TravelPlanType } from "@/data/TravelPlan";
+import { TravelPlanStatus, TravelPlanType } from "@/data/TravelPlan";
+import { useStore } from "@/store";
 
-export function getPlanStatus(plan: TravelPlanType, now: number): PlanStatus {
-  if (plan.isManuallyCompleted) return "completed";
+export function getPlanStatus(
+  plan: TravelPlanType,
+  now: Date
+): TravelPlanStatus {
+  const nowTime = now.getTime();
+  if (plan.status == "completed") return TravelPlanStatus.completed;
+  if (plan.status == "deleted") return TravelPlanStatus.deleted;
+  if (plan.status == "cancelled") return TravelPlanStatus.cancelled;
 
   const oneDay = 24 * 60 * 60 * 1000; // 一天的毫秒数
-
-  if (now > plan.endTime) return "expired";
-  if (now >= plan.startTime && now <= plan.endTime) return "in-progress";
-  if (now >= plan.startTime - oneDay && now < plan.startTime) return "upcoming";
-  return "not-started";
+  if (nowTime >= plan.startDateTime - oneDay && nowTime < plan.startDateTime) {
+    if (plan.status != TravelPlanStatus.upcoming) {
+      plan.status = TravelPlanStatus.upcoming;
+      const store = useStore();
+      store.updateTravelPlan(plan);
+    }
+  }
+  if (nowTime > plan.endDateTime) {
+    if (plan.status != TravelPlanStatus.expired) {
+      plan.status = TravelPlanStatus.expired;
+      const store = useStore();
+      store.updateTravelPlan(plan);
+    }
+  }
+  if (nowTime >= plan.startDateTime && nowTime <= plan.endDateTime) {
+    if (plan.status != TravelPlanStatus.inProgress) {
+      plan.status = TravelPlanStatus.inProgress;
+      const store = useStore();
+      store.updateTravelPlan(plan);
+    }
+  }
+  return plan.status;
 }
 
-export function getProgressPercentage(
-  plan: TravelPlanType,
-  now: number
-): number {
-  if (now < plan.startTime) return 0;
-  if (now > plan.endTime) return 100;
+export function getProgressPercentage(plan: TravelPlanType, now: Date): number {
+  const nowTime = now.getTime();
+  if (nowTime < plan.startDateTime) return 0;
+  if (nowTime > plan.endDateTime) return 100;
 
-  const totalDuration = plan.endTime - plan.startTime;
-  const elapsed = now - plan.startTime;
+  const totalDuration = plan.endDateTime - plan.startDateTime;
+  const elapsed = nowTime - plan.startDateTime;
 
   return Math.round((elapsed / totalDuration) * 100);
 }

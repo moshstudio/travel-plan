@@ -1,36 +1,19 @@
 <script setup lang="ts">
-import {
-  ref,
-  reactive,
-  onMounted,
-  computed,
-  markRaw,
-  toRaw,
-  watch,
-  onActivated,
-} from "vue";
+import { ref, reactive, onMounted, computed, markRaw, toRaw } from "vue";
 import { useStore } from "@/store";
 import { showFailToast, showSuccessToast } from "vant";
 import { getCurrentLngLat, getLngLatAddress } from "@/api/tdt.ts";
 import router from "@/router";
-import * as datefns from "date-fns";
 import { storeToRefs } from "pinia";
 import { TravelPlanStatus, TravelPlanType } from "@/data/TravelPlan";
 import PrioritySelector from "@/components/PrioritySelector.vue";
 import DateTimeRangePicker from "@/components/DateTimeRangePicker.vue";
 import TravelTagSelector from "@/components/TravelTagSelector.vue";
-import { useRoute } from "vue-router";
 
 const store = useStore();
-const route = useRoute();
 const { currentTravel } = storeToRefs(store);
 
-// 获取要编辑的计划ID
-const { travelPlanId } = defineProps({
-  travelPlanId: String,
-});
-const plan = ref<TravelPlanType>();
-
+// 表单数据
 const form = reactive({
   name: "",
   startDateTime: new Date(new Date().setHours(8, 0, 0, 0)),
@@ -41,29 +24,9 @@ const form = reactive({
   priority: "medium" as "low" | "medium" | "high",
 });
 
-// 加载已有计划数据
-const loadPlanData = async () => {
-  if (!travelPlanId) return;
-
-  plan.value = store.getTravelPlanById(travelPlanId);
-  if (!plan.value) {
-    showFailToast("计划不存在");
-    router.back();
-    return;
-  }
-  form.name = plan.value.title;
-  form.startDateTime = new Date(plan.value.startDateTime);
-  form.endDateTime = new Date(plan.value.endDateTime);
-  form.tags = plan.value.tags || [];
-  form.priority = plan.value.priority;
-  form.isAllDay = plan.value.isAllDay || false;
-  form.notes = plan.value.description || "";
-  store.positionSelectAddress = plan.value.location;
-};
-
-// 提交表单 - 更新计划
+// 提交表单
 const onSubmit = async () => {
-  if (!form?.name || !form?.startDateTime || !form?.endDateTime) {
+  if (!form.name || !form.startDateTime || !form.endDateTime) {
     showFailToast("请填写必填信息");
     return;
   }
@@ -81,13 +44,9 @@ const onSubmit = async () => {
     router.push({ name: "CreateTravel" });
     return;
   }
-  if (!plan.value) {
-    showFailToast("计划不存在");
-    return;
-  }
-  const planData: TravelPlanType = {
-    id: plan.value.id,
-    travelPlanId: plan.value.travelPlanId,
+
+  // 这里可以调用store的action来保存计划
+  const planData: Omit<TravelPlanType, "id" | "travelPlanId"> = {
     travelId: currentTravel.value.travelId,
     title: form.name,
     description: form.notes,
@@ -104,24 +63,16 @@ const onSubmit = async () => {
   };
   console.log(planData);
 
-  try {
-    await store.updateTravelPlan(planData);
-    showSuccessToast("计划更新成功");
-    back();
-  } catch (error) {
-    showFailToast("更新计划失败");
-    console.error(error);
-  }
+  await store.addTravelPlan(planData);
+  showSuccessToast("计划创建成功");
+  back();
 };
 
 const back = () => {
-  router.back();
+  router.push({ name: "Travel" });
 };
 
 onMounted(async () => {
-  await loadPlanData();
-
-  // 如果没有选择位置，则使用当前位置
   if (!store.positionSelectAddress) {
     const lonlat = await getCurrentLngLat();
     if (lonlat) {
@@ -136,24 +87,14 @@ onMounted(async () => {
     }
   }
 });
-onActivated(async () => {
-  await loadPlanData();
-});
 </script>
 
 <template>
   <div
-    v-if="!plan"
-    class="w-screen h-screen flex flex-col items-center overflow-hidden bg-[var(--van-background)]"
-  >
-    <van-loading></van-loading>
-  </div>
-  <div
-    v-else
     class="w-screen h-screen flex flex-col overflow-hidden bg-[var(--van-background)]"
   >
     <van-nav-bar
-      title="编辑旅行计划"
+      title="添加旅行计划"
       left-arrow
       @click-left="back"
     />
@@ -173,7 +114,10 @@ onActivated(async () => {
           :time-selectable="true"
         />
         <PrioritySelector v-model="form.priority" />
-        <TravelTagSelector v-model="form.tags"></TravelTagSelector>
+        <TravelTagSelector
+          :v-model="form.tags"
+          @update:model-value="(v) => (form.tags = v)"
+        ></TravelTagSelector>
         <van-cell
           title="目的地"
           :value="store.positionSelectAddress?.name || ''"
@@ -182,7 +126,7 @@ onActivated(async () => {
           @click="() => $router.push({ name: 'PositionSelect' })"
         />
         <van-field
-          v-model="plan.description"
+          v-model="form.notes"
           rows="3"
           autosize
           label="备注"
@@ -202,7 +146,7 @@ onActivated(async () => {
           class="bg-blue-500"
           @click="onSubmit"
         >
-          更新计划
+          创建计划
         </van-button>
       </div>
     </div>

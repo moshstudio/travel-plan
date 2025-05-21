@@ -4,25 +4,53 @@ import { createRouter, createWebHashHistory, RouteRecordRaw } from "vue-router";
 const routes: RouteRecordRaw[] = [
   {
     path: "/",
-    redirect: { name: "Plan" }, // 重定向到plan
+    redirect: { name: "Travel" },
   },
   {
-    path: "/plan",
+    path: "/travel",
     children: [
       {
         path: "",
-        name: "Plan",
-        component: () => import("@/views/plan/index.vue"),
+        name: "Travel",
+        component: () => import("@/views/travel/index.vue"),
       },
       {
-        path: "add-plan",
-        name: "AddPlan",
-        component: () => import("@/views/plan/AddPlan.vue"),
+        path: "create",
+        name: "CreateTravel",
+        component: () => import("@/views/travel/CreateTravel.vue"),
+      },
+    ],
+  },
+  {
+    path: "/plan",
+    redirect: { name: "Travel" },
+    children: [
+      {
+        path: "create",
+        name: "CreatePlan",
+        component: () => import("@/views/plan/CreatePlan.vue"),
       },
       {
-        path: "edit-plan/:id",
+        path: "edit/:travelPlanId",
         name: "EditPlan",
         component: () => import("@/views/plan/EditPlan.vue"),
+        props: true,
+      },
+    ],
+  },
+  {
+    path: "/checkList",
+    redirect: { name: "Travel" },
+    children: [
+      {
+        path: "create",
+        name: "CreateChecklist",
+        component: () => import("@/views/checklist/CreateChecklist.vue"),
+      },
+      {
+        path: "edit/:itemId",
+        name: "EditChecklist",
+        component: () => import("@/views/checklist/EditChecklist.vue"),
         props: true,
       },
     ],

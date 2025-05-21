@@ -10,10 +10,19 @@
       :class="accentClasses"
     ></div>
 
+    <!-- 优先级标记 -->
+    <div
+      v-if="plan.priority !== 'medium'"
+      class="priority-flag"
+      :class="priorityClasses"
+    >
+      {{ priorityText }}
+    </div>
+
     <div class="card-content">
       <!-- 标题和状态区域 -->
       <div class="card-header">
-        <h3 class="plan-title">{{ plan.name }}</h3>
+        <h3 class="plan-title">{{ plan.title }}</h3>
         <div class="header-right">
           <div
             class="status-badge"
@@ -36,13 +45,30 @@
         </div>
       </div>
 
+      <!-- 标签区域 -->
+      <div
+        v-if="plan.tags && plan.tags.length > 0"
+        class="tags-container"
+      >
+        <span
+          v-for="(tag, index) in plan.tags"
+          :key="index"
+          class="tag"
+        >
+          {{ tag }}
+        </span>
+      </div>
+
       <!-- 位置信息 -->
-      <div class="location-info">
+      <div
+        v-if="plan.location"
+        class="location-info"
+      >
         <van-icon
           name="location-o"
           class="location-icon"
         />
-        <span class="location-text">{{ plan.location.address }}</span>
+        <span class="location-text">{{ plan.location.name }}</span>
       </div>
 
       <!-- 描述信息 -->
@@ -52,6 +78,20 @@
       >
         {{ plan.description }}
       </p>
+
+      <!-- 预算信息 -->
+      <div
+        v-if="plan.budget"
+        class="budget-info"
+      >
+        <van-icon
+          name="balance-o"
+          class="budget-icon"
+        />
+        <span class="budget-text"
+          >预算: ¥{{ plan.budget.toLocaleString() }}</span
+        >
+      </div>
 
       <!-- 进度条 -->
       <div
@@ -78,6 +118,11 @@
               <span class="time-separator">→</span>
               {{ endTime.date }} {{ endTime.time }}
             </span>
+            <span
+              v-if="plan.isAllDay"
+              class="all-day-badge"
+              >全天</span
+            >
           </div>
         </div>
       </div>
@@ -100,7 +145,7 @@
     <van-action-sheet
       teleport="body"
       v-model:show="showMarkSheet"
-      :description="plan.name"
+      :description="plan.title"
       :actions="markSheetActions"
       cancel-text="取消"
       close-on-click-action
@@ -112,10 +157,11 @@
 <script setup lang="ts">
 import { computed, ref } from "vue";
 import { getPlanStatus, getProgressPercentage } from "@/utils/planUtils";
-import { TravelPlanType } from "@/data/TravelPlan";
+import { TravelPlanStatus, TravelPlanType } from "@/data/TravelPlan";
 import { useStore } from "@/store";
 import { storeToRefs } from "pinia";
 import router from "@/router";
+import { showConfirmDialog } from "vant";
 
 const props = defineProps<{
   plan: TravelPlanType;
@@ -126,31 +172,32 @@ const emit = defineEmits(["update-plan", "cancel-plan"]);
 const store = useStore();
 const { now } = storeToRefs(store);
 
-const status = computed(() => getPlanStatus(props.plan, now.value.getTime()));
-const progress = computed(() =>
-  getProgressPercentage(props.plan, now.value.getTime())
-);
-const isCanceled = computed(() => props.plan.isCancelled);
+const status = computed(() => getPlanStatus(props.plan, now.value));
+const progress = computed(() => getProgressPercentage(props.plan, now.value));
+const isCancelled = computed(() => props.plan.status === "cancelled");
+const isCompleted = computed(() => status.value === "completed");
 
 const showMarkSheet = ref(false);
 
 const markSheetActions = computed(() => {
   const actions = [];
-  if (props.plan.isCancelled) {
+  if (isCancelled.value) {
     actions.push({
       name: "撤销取消",
       icon: "revoke",
       callback: () => {
-        props.plan.isCancelled = false;
+        props.plan.status = TravelPlanStatus.planned;
+        store.updateTravelPlan(props.plan);
       },
     });
   } else {
-    if (props.plan.isManuallyCompleted) {
+    if (isCompleted.value) {
       actions.push({
         name: "撤销完成",
         icon: "revoke",
         callback: () => {
-          props.plan.isManuallyCompleted = false;
+          props.plan.status = TravelPlanStatus.planned;
+          store.updateTravelPlan(props.plan);
         },
       });
     } else {
@@ -159,7 +206,8 @@ const markSheetActions = computed(() => {
         icon: "success",
         color: "#10B981",
         callback: () => {
-          props.plan.isManuallyCompleted = true;
+          props.plan.status = TravelPlanStatus.completed;
+          store.updateTravelPlan(props.plan);
         },
       });
       actions.push({
@@ -167,8 +215,8 @@ const markSheetActions = computed(() => {
         icon: "clock-o",
         color: "#1E90FF",
         callback: () => {
-          props.plan.endTime += 24 * 60 * 60 * 1000;
-          store.refreshPlans();
+          props.plan.endDateTime += 24 * 60 * 60 * 1000;
+          store.updateTravelPlan(props.plan);
         },
       });
     }
@@ -177,7 +225,8 @@ const markSheetActions = computed(() => {
       icon: "delete-o",
       color: "#FF8C00",
       callback: () => {
-        props.plan.isCancelled = true;
+        props.plan.status = TravelPlanStatus.cancelled;
+        store.updateTravelPlan(props.plan);
       },
     });
     actions.push({
@@ -185,7 +234,13 @@ const markSheetActions = computed(() => {
       icon: "fail",
       color: "red",
       callback: () => {
-        store.removePlan(props.plan.id);
+        showConfirmDialog({
+          title: "确定要删除此计划吗？",
+          confirmButtonText: "确定",
+        }).then(() => {
+          props.plan.status = TravelPlanStatus.deleted;
+          store.deleteTravelPlan(props.plan);
+        });
       },
     });
   }
@@ -193,71 +248,95 @@ const markSheetActions = computed(() => {
 });
 
 const statusClasses = computed(() => {
-  if (isCanceled.value) return "canceled";
-
-  return {
-    "not-started": "not-started",
-    upcoming: "upcoming",
-    "in-progress": "in-progress",
-    completed: "completed",
-    expired: "expired",
-  }[status.value];
+  if (isCancelled.value) return "cancelled";
+  return status.value.toString();
 });
 
 const accentClasses = computed(() => {
-  if (isCanceled.value) return "bg-gray-400";
-
   return {
-    "not-started": "bg-gray-400",
+    planned: "bg-gray-400",
     upcoming: "bg-yellow-400",
     "in-progress": "bg-green-400",
     completed: "bg-blue-400",
     expired: "bg-red-400",
+    cancelled: "bg-gray-400",
+    deleted: "bg-gray-400",
   }[status.value];
 });
 
 const statusBadgeClasses = computed(() => {
-  if (isCanceled.value) return "bg-gray-200 text-gray-700";
-
   return {
-    "not-started": "bg-gray-100 text-gray-800",
+    planned: "bg-gray-100 text-gray-800",
     upcoming: "bg-yellow-100 text-yellow-800",
     "in-progress": "bg-green-100 text-green-800",
     completed: "bg-blue-100 text-blue-800",
     expired: "bg-red-100 text-red-800",
+    cancelled: "bg-gray-200 text-gray-700",
+    deleted: "bg-gray-100 text-gray-800",
   }[status.value];
 });
 
 const statusText = computed(() => {
-  if (isCanceled.value) return "已取消";
-
   return {
-    "not-started": "未开始",
+    planned: "未开始",
     upcoming: "即将开始",
     "in-progress": "进行中",
     completed: "已完成",
     expired: "已结束",
+    cancelled: "已取消",
+    deleted: "已删除",
   }[status.value];
 });
 
+const priorityClasses = computed(() => {
+  return {
+    low: "bg-blue-100 text-blue-800",
+    high: "bg-red-100 text-red-800",
+    medium: "",
+  }[props.plan.priority];
+});
+
+const priorityText = computed(() => {
+  return {
+    low: "低优先级",
+    high: "高优先级",
+    medium: "",
+  }[props.plan.priority];
+});
+
 const statusHint = computed(() => {
-  if (isCanceled.value) return "此计划已取消";
-  if (status.value === "upcoming")
-    return `计划即将在 ${timeUntilStart.value} 后开始`;
-  if (status.value === "not-started") return `${timeUntilStart.value} 后开始`;
-  return null;
+  switch (status.value) {
+    case "cancelled":
+      return `此计划已取消`;
+    case "upcoming":
+      return `计划即将在 ${timeUntilStart.value} 后开始`;
+    case "planned":
+      return `${timeUntilStart.value} 后开始`;
+    default:
+      return null;
+  }
 });
 
 const hintClasses = computed(() => {
-  if (isCanceled.value) return "text-red-500 bg-red-50";
-  if (status.value === "upcoming") return "text-yellow-600 bg-yellow-50";
-  return "text-gray-600 bg-gray-50";
+  switch (status.value) {
+    case "cancelled":
+      return `text-red-500 bg-red-50`;
+    case "upcoming":
+      return `text-yellow-600 bg-yellow-50`;
+    default:
+      return `text-gray-600 bg-gray-50`;
+  }
 });
 
 const hintIcon = computed(() => {
-  if (isCanceled.value) return "info-o";
-  if (status.value === "upcoming") return "warning-o";
-  return "clock-o";
+  switch (status.value) {
+    case "cancelled":
+      return `info-o`;
+    case "upcoming":
+      return `warning-o`;
+    default:
+      return `clock-o`;
+  }
 });
 
 const formatTime = (timestamp: number) => {
@@ -268,11 +347,11 @@ const formatTime = (timestamp: number) => {
   };
 };
 
-const startTime = computed(() => formatTime(props.plan.startTime));
-const endTime = computed(() => formatTime(props.plan.endTime));
+const startTime = computed(() => formatTime(props.plan.startDateTime));
+const endTime = computed(() => formatTime(props.plan.endDateTime));
 
 const timeUntilStart = computed(() => {
-  const diff = props.plan.startTime - now.value.getTime();
+  const diff = props.plan.startDateTime - now.value.getTime();
   if (diff <= 0) return "";
 
   const hours = Math.floor(diff / (1000 * 60 * 60));
@@ -289,11 +368,10 @@ const timeUntilStart = computed(() => {
 });
 
 const handleCardClick = () => {
-  // 可以在这里添加卡片点击事件处理
   router.push({
     name: "EditPlan",
     params: {
-      id: props.plan.id,
+      travelPlanId: props.plan.travelPlanId,
     },
   });
 };
@@ -310,6 +388,7 @@ const handleCardClick = () => {
   margin-bottom: 16px;
   overflow: hidden;
   transition: all 0.3s ease;
+  border: 1px solid #f0f0f0;
 }
 
 .plan-card:hover {
@@ -325,6 +404,19 @@ const handleCardClick = () => {
   height: 100%;
 }
 
+.priority-flag {
+  position: absolute;
+  bottom: 12px; /* 替换原来的 top */
+  right: -22px; /* 保持原定位逻辑 */
+  width: 80px;
+  padding: 2px 0;
+  text-align: center;
+  font-size: 12px;
+  font-weight: 500;
+  transform: rotate(-45deg); /* 反向旋转 */
+  z-index: 2;
+}
+
 .card-content {
   position: relative;
   z-index: 1;
@@ -333,23 +425,26 @@ const handleCardClick = () => {
 .card-header {
   display: flex;
   justify-content: space-between;
-  align-items: flex-start; /* 改为顶部对齐 */
+  align-items: flex-start;
   margin-bottom: 12px;
-  gap: 8px; /* 添加间隙 */
+  gap: 8px;
 }
 
 .header-right {
   display: flex;
   align-items: center;
-  gap: 6px; /* 按钮和状态标签之间的间隙 */
+  gap: 6px;
 }
 
 .plan-title {
   flex: 1;
+  font-size: 16px;
+  font-weight: 600;
+  color: #1f2937;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  margin-right: 8px; /* 标题和右侧内容保持间距 */
+  margin-right: 8px;
 }
 
 .action-button {
@@ -368,7 +463,23 @@ const handleCardClick = () => {
   font-weight: 500;
   white-space: nowrap;
   margin-left: 8px;
-  align-self: center; /* 垂直居中 */
+}
+
+.tags-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+
+.tag {
+  font-size: 12px;
+  padding: 2px 8px;
+  background-color: #f3f4f6;
+  color: #4b5563;
+  border-radius: 12px;
+  display: inline-flex;
+  align-items: center;
 }
 
 .location-info {
@@ -385,14 +496,27 @@ const handleCardClick = () => {
 }
 
 .plan-description {
-  font-size: 13px;
+  font-size: 14px;
   color: #4b5563;
   margin-bottom: 12px;
-  line-height: 1.4;
+  line-height: 1.5;
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
+}
+
+.budget-info {
+  display: flex;
+  align-items: center;
+  font-size: 13px;
+  color: #6b7280;
+  margin-bottom: 12px;
+}
+
+.budget-icon {
+  margin-right: 6px;
+  color: #9ca3af;
 }
 
 .progress-container {
@@ -443,7 +567,7 @@ const handleCardClick = () => {
 }
 
 .time-range {
-  font-size: 12px;
+  font-size: 13px;
   color: #4b5563;
   font-weight: 500;
   display: inline-flex;
@@ -458,17 +582,13 @@ const handleCardClick = () => {
   font-weight: normal;
 }
 
-/* 小屏幕适配 */
-@media (max-width: 340px) {
-  .time-range {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 0;
-  }
-
-  .time-separator {
-    display: none;
-  }
+.all-day-badge {
+  font-size: 11px;
+  padding: 2px 6px;
+  background-color: #f3f4f6;
+  color: #6b7280;
+  border-radius: 4px;
+  margin-left: 6px;
 }
 
 .status-hint {
@@ -486,7 +606,7 @@ const handleCardClick = () => {
 }
 
 /* 不同状态下的卡片样式 */
-.plan-card.not-started {
+.plan-card.planned {
   border-left: 4px solid #9ca3af;
 }
 
@@ -506,13 +626,13 @@ const handleCardClick = () => {
   border-left: 4px solid #ef4444;
 }
 
-.plan-card.canceled {
+.plan-card.cancelled {
   background-color: #f3f4f6;
   color: #9ca3af;
   position: relative;
 }
 
-.plan-card.canceled::after {
+.plan-card.cancelled::after {
   content: "";
   position: absolute;
   top: 0;
@@ -538,5 +658,27 @@ const handleCardClick = () => {
   font-weight: 500;
   color: #1f2937;
   padding: 12px 16px;
+}
+
+/* 响应式设计 */
+@media (max-width: 340px) {
+  .time-range {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0;
+  }
+
+  .time-separator {
+    display: none;
+  }
+
+  .plan-title {
+    font-size: 15px;
+  }
+
+  .status-badge {
+    font-size: 11px;
+    padding: 3px 6px;
+  }
 }
 </style>

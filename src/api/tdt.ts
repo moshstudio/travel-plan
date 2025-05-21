@@ -45,6 +45,8 @@ export async function getLngLatAddress(lonlat: {
     },
   });
   const data = await response.json();
+  console.log("getLngLatAddress", data);
+
   return data.result.formatted_address;
 }
 
@@ -77,9 +79,12 @@ export async function tdtSearch(keyword: string): Promise<AddressType[]> {
     return data.suggests?.map((item: any) => {
       const [lon, lat] = item.lonlat.split(",");
       return {
-        address: item.address + " " + item.name,
-        lng: Number(lon),
-        lat: Number(lat),
+        name: item.address + " " + item.name,
+        address: item.address,
+        coordinates: {
+          lng: Number(lon),
+          lat: Number(lat),
+        },
       } as AddressType;
     });
   } catch (error) {

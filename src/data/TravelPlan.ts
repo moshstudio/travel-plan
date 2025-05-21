@@ -8,9 +8,9 @@ export interface TravelType {
   travelId: string;
   name: string; //"2023夏季欧洲之旅";
   description?: string; // "为期两周的欧洲多国旅行";
-  startDateTime?: number; // "2023-07-15";
-  endDateTime?: number; // "2023-07-30";
-  createdAt: number; // "2023-05-10T08:00:00Z";
+  startDateTime?: number;
+  endDateTime?: number;
+  createdAt: number;
 }
 
 export interface TravelPlanType {
@@ -25,7 +25,7 @@ export interface TravelPlanType {
   isAllDay?: boolean; // 是否为全天事件(跨天计划通常设为false)
   timezone: string; //"Asia/Shanghai"; // 时区信息
   location?: AddressType;
-  status: "planned" | "in-progress" | "completed" | "cancelled" | "deleted";
+  status: TravelPlanStatus;
   priority: "low" | "medium" | "high"; // 优先级
   budget?: number; // 预算(元)
   attachments?: AttachmentType[];
@@ -36,4 +36,14 @@ export interface TravelPlanType {
   createdBy?: string; // 创建人ID
   version: number; // 数据版本号(用于同步冲突解决)
   recurrence?: RecurrenceType;
+}
+
+export enum TravelPlanStatus {
+  planned = "planned", // 初始默认
+  upcoming = "upcoming", // 即将开始
+  inProgress = "in-progress", // 进行中
+  expired = "expired", // 已过期
+  completed = "completed", // 已完成
+  cancelled = "cancelled", // 已取消
+  deleted = "deleted", // 已删除
 }

@@ -1,209 +1,92 @@
 <script setup lang="ts">
-import { ref, onMounted, nextTick } from "vue";
+import { ref, onMounted, nextTick, computed } from "vue";
 import PlanCard from "@/components/travelPlan/PlanCard.vue";
 import { useStore } from "@/store";
 import { storeToRefs } from "pinia";
 import { useRouter } from "vue-router";
-import { getProxyUrl } from "@/utils/proxyUrl";
-import { tdtUrl } from "@/constants/tdt";
 
 const router = useRouter();
 const store = useStore();
-const { plansBeforeToday, plansFromToday } = storeToRefs(store);
+const {
+  currentTravel,
+  travelPlansBeforeToday,
+  travelPlansFromToday,
+  travelPlans,
+} = storeToRefs(store);
 
 const showPlansBeforeToday = ref(false);
-const isLoading = ref(false);
-
 function onClickAdd() {
-  router.push({ name: "AddPlan" });
+  router.push({ name: "CreatePlan" });
 }
 
-async function handleRefresh() {
-  if (showPlansBeforeToday.value) {
-    isLoading.value = false;
-    return;
+onMounted(async () => {
+  if (!currentTravel.value) {
+    router.push({ name: "CreateTravel" });
   }
-
-  showPlansBeforeToday.value = true;
-  isLoading.value = false;
-
-  await nextTick();
-
-  document
-    .querySelector(".current-plans-section")
-    ?.scrollIntoView({ behavior: "smooth" });
-}
-function loadTianDiTuAPI() {
-  return new Promise<void>(async (resolve, reject) => {
-    const script = document.createElement("script");
-    const url = await getProxyUrl(tdtUrl);
-    script.src = url!;
-    script.type = "text/javascript";
-    script.onload = () => {
-      console.log("天地图 API 加载成功");
-      resolve();
-    };
-
-    script.onerror = () => {
-      console.error("天地图 API 加载失败");
-      reject(new Error("天地图 API 加载失败"));
-    };
-
-    document.head.appendChild(script);
-  });
-}
-onMounted(() => {
-  loadTianDiTuAPI();
 });
 </script>
 
 <template>
-  <div class="travel-plans-app">
-    <van-nav-bar
-      title="旅行计划"
-      class="app-nav-bar"
-      :border="false"
-    />
-
-    <div class="app-background"></div>
-
-    <van-pull-refresh
-      v-model="isLoading"
-      :pulling-text="
-        showPlansBeforeToday ? '没有更早的计划了' : '下拉显示已结束计划'
-      "
-      :loosing-text="
-        showPlansBeforeToday ? '没有更早的计划了' : '释放显示已结束计划'
-      "
-      @refresh="handleRefresh"
-      class="plans-container thin-scrollbar"
-    >
-      <div class="container-inner">
-        <transition name="fade-slide">
-          <div
-            v-if="showPlansBeforeToday"
-            class="expired-plans-section"
-          >
-            <div class="section-header">
-              <van-divider class="custom-divider">
-                <span
-                  class="divider-text"
-                  @click="showPlansBeforeToday = !showPlansBeforeToday"
-                >
-                  {{ plansBeforeToday.length ? "已结束计划" : "无已结束计划" }}
-                </span>
-              </van-divider>
-            </div>
-            <transition-group
-              name="list"
-              tag="div"
-            >
-              <PlanCard
-                v-for="(plan, index) in plansBeforeToday"
-                :key="plan.id"
-                :plan="plan"
-                class="expired-plan"
-              />
-            </transition-group>
-          </div>
-        </transition>
-
-        <div class="current-plans-section">
-          <div
-            v-if="plansFromToday.length"
-            class="section-header"
-          >
-            <van-divider class="custom-divider">
-              <span class="divider-text">当前计划</span>
-            </van-divider>
-          </div>
-
-          <transition-group
-            name="list"
-            tag="div"
-          >
-            <PlanCard
-              v-for="(plan, index) in plansFromToday"
-              :key="plan.id"
-              :plan="plan"
-              class="current-plan"
-            />
-          </transition-group>
-
-          <div
-            v-if="!plansFromToday.length"
-            class="empty-state"
-          >
-            <img
-              src="@/assets/images/empty-travel.png"
-              alt="空状态"
-              class="empty-image"
-            />
-            <p class="empty-text">暂无旅行计划</p>
-            <p class="empty-hint">点击下方按钮创建您的第一个旅行计划</p>
-          </div>
-        </div>
-
-        <div class="bottom-spacer"></div>
+  <van-list class="p-4 thin-scrollbar">
+    <transition name="fade-slide">
+      <div
+        v-if="showPlansBeforeToday && travelPlansBeforeToday?.length"
+        class="expired-plans-section"
+      >
+        <transition-group
+          name="list"
+          tag="div"
+        >
+          <PlanCard
+            v-for="(plan, index) in travelPlansBeforeToday"
+            :key="plan.id"
+            :plan="plan"
+            class="expired-plan"
+          />
+        </transition-group>
       </div>
-    </van-pull-refresh>
+    </transition>
+    <div v-show="travelPlansBeforeToday?.length">
+      <van-divider class="custom-divider">
+        <span
+          class="divider-text"
+          @click="showPlansBeforeToday = !showPlansBeforeToday"
+        >
+          {{ !showPlansBeforeToday ? "显示更早的计划" : "隐藏更早的计划" }}
+        </span>
+      </van-divider>
+    </div>
 
-    <van-floating-bubble
-      icon="plus"
-      @click="onClickAdd"
-      class="add-button"
-    />
-  </div>
+    <div class="current-plans-section">
+      <transition-group
+        name="list"
+        tag="div"
+      >
+        <PlanCard
+          v-for="(plan, index) in travelPlansFromToday"
+          :key="plan.id"
+          :plan="plan"
+          class="current-plan"
+        />
+      </transition-group>
+      <div
+        v-if="!travelPlansFromToday?.length"
+        class="empty-state"
+      >
+        <img
+          src="@/assets/images/empty-travel.png"
+          alt="空状态"
+          class="empty-image"
+        />
+        <p class="empty-text">暂无旅行计划</p>
+        <p class="empty-hint">点击下方按钮创建您的旅行计划</p>
+      </div>
+      <div class="shrink-0 h-[220px]"></div>
+    </div>
+  </van-list>
 </template>
 
 <style scoped>
-.travel-plans-app {
-  position: relative;
-  width: 100%;
-  height: 100vh;
-  overflow: hidden;
-  background-color: #f5f7fa;
-}
-
-.app-nav-bar {
-  background: linear-gradient(135deg, #6a11cb 0%, #2575fc 100%);
-  color: white;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-}
-
-.app-nav-bar :deep(.van-nav-bar__title) {
-  color: white;
-  font-weight: 600;
-}
-
-.app-background {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 180px;
-  background: linear-gradient(135deg, #6a11cb 0%, #2575fc 100%);
-  z-index: 0;
-  border-bottom-left-radius: 20px;
-  border-bottom-right-radius: 20px;
-}
-
-.plans-container {
-  position: relative;
-  width: 100%;
-  height: calc(100% - 46px);
-  padding: 16px;
-  z-index: 1;
-  background: transparent;
-  overflow-y: auto !important;
-}
-
-.container-inner {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-
 .section-header {
   margin: 8px 0;
 }
@@ -268,23 +151,6 @@ onMounted(() => {
 .empty-hint {
   font-size: 14px;
   color: #888;
-}
-
-.bottom-spacer {
-  height: 220px;
-}
-
-.add-button {
-  --van-floating-bubble-background: linear-gradient(
-    135deg,
-    #6a11cb 0%,
-    #2575fc 100%
-  );
-  --van-floating-bubble-size: 56px;
-  --van-floating-bubble-icon-size: 24px;
-  box-shadow: 0 4px 12px rgba(106, 17, 203, 0.3);
-  right: 24px;
-  bottom: 24px;
 }
 
 .fade-slide-enter-active,

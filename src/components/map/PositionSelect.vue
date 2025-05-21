@@ -90,7 +90,7 @@ async function mapInit() {
     const address = await getLngLatAddress({ lng: lnglat[0], lat: lnglat[1] });
     searchValue.value = address;
     selectedAddress.value = {
-      address,
+      name: address,
       lng: lnglat[0],
       lat: lnglat[1],
     };
@@ -105,16 +105,18 @@ const onSearch = _.debounce(async (value) => {
 }, 800);
 
 function selectAddressOption(address: AddressType) {
-  searchValue.value = address.address;
+  searchValue.value = address.name;
   selectedAddress.value = address;
   map.value?.setView(
     new View({
-      center: fromLonLat([address.lng, address.lat]),
+      center: fromLonLat([address.coordinates.lng, address.coordinates.lat]),
       zoom: 14,
       projection: "EPSG:3857",
     })
   );
-  placemark.value?.show(fromLonLat([address.lng, address.lat]));
+  placemark.value?.show(
+    fromLonLat([address.coordinates.lng, address.coordinates.lat])
+  );
   addressOptions.value = [];
   showAddressOptions.value = false;
 }
@@ -137,12 +139,12 @@ onActivated(async () => {
   }
   if (store.positionSelectAddress && map.value) {
     selectedAddress.value = store.positionSelectAddress;
-    searchValue.value = store.positionSelectAddress.address;
+    searchValue.value = store.positionSelectAddress.name;
     map.value.setView(
       new View({
         center: fromLonLat([
-          store.positionSelectAddress.lng,
-          store.positionSelectAddress.lat,
+          store.positionSelectAddress.coordinates.lng,
+          store.positionSelectAddress.coordinates.lat,
         ]),
         zoom: 14,
         projection: "EPSG:3857",
@@ -150,8 +152,8 @@ onActivated(async () => {
     );
     placemark.value?.show(
       fromLonLat([
-        store.positionSelectAddress.lng,
-        store.positionSelectAddress.lat,
+        store.positionSelectAddress.coordinates.lng,
+        store.positionSelectAddress.coordinates.lat,
       ])
     );
   }
@@ -200,7 +202,7 @@ onActivated(async () => {
           <van-cell
             v-for="(address, index) in addressOptions"
             :key="index"
-            :title="address.address"
+            :title="address.name"
             @click="selectAddressOption(address)"
             clickable
           >
