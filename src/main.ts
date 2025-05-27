@@ -13,14 +13,22 @@ import "vant/es/toast/style";
 import "vant/es/dialog/style";
 import "vant/es/notify/style";
 import { install as installTianDiTu } from "vue-tianditu2";
+import createDatetime from "vue-datetime3";
+import RememberScrollDirective from "./utils/directives/rememberScroll";
+
+import "vue-datetime3/style.css";
+import "font-awesome/css/font-awesome.min.css";
+
 const app = createApp(App);
 app
   .use(router)
   .use(createPinia())
+  .use(createDatetime())
   .use(DatePicker)
   .use(TimePicker)
   .use(installTianDiTu, {
     v: "4.0", //目前只支持4.0版本
     tk: "bea0c0310f3478b0a79d7e594f741fa6",
   })
+  .directive("remember-scroll", RememberScrollDirective)
   .mount("#app");

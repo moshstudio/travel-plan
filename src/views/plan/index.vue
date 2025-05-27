@@ -4,20 +4,52 @@ import PlanCard from "@/components/travelPlan/PlanCard.vue";
 import { useStore } from "@/store";
 import { storeToRefs } from "pinia";
 import { useRouter } from "vue-router";
+import { format } from "date-fns";
+import { zhCN } from "date-fns/locale";
 
 const router = useRouter();
 const store = useStore();
-const {
-  currentTravel,
-  travelPlansBeforeToday,
-  travelPlansFromToday,
-  travelPlans,
-} = storeToRefs(store);
+const { currentTravel, travelPlansBeforeToday, travelPlansFromToday } =
+  storeToRefs(store);
 
 const showPlansBeforeToday = ref(false);
-function onClickAdd() {
-  router.push({ name: "CreatePlan" });
-}
+
+// 格式化日期显示
+const formatDate = (date: Date) => {
+  const today = new Date();
+  const tomorrow = new Date(today);
+  tomorrow.setDate(tomorrow.getDate() + 1);
+
+  // 如果是今天
+  if (date.toDateString() === today.toDateString()) {
+    return "今天";
+  }
+  // 如果是明天
+  if (date.toDateString() === tomorrow.toDateString()) {
+    return "明天";
+  }
+  // 如果是今年
+  if (date.getFullYear() === today.getFullYear()) {
+    return format(date, "M月d日 EEE", { locale: zhCN });
+  }
+  // 其他日期
+  return format(date, "yyyy年M月d日 EEE", { locale: zhCN });
+};
+
+// 按日期分组计划
+const groupedPlans = computed(() => {
+  const groups: Record<string, typeof travelPlansFromToday.value> = {};
+
+  travelPlansFromToday.value?.forEach((plan) => {
+    const dateKey = new Date(plan.startDateTime).toDateString();
+    if (!groups[dateKey]) {
+      groups[dateKey] = [];
+    }
+    groups[dateKey].push(plan);
+  });
+
+  return groups;
+});
 
 onMounted(async () => {
   if (!currentTravel.value) {
@@ -27,15 +59,22 @@ onMounted(async () => {
 </script>
 
 <template>
-  <van-list class="p-4 thin-scrollbar">
-    <transition name="fade-slide">
+  <div
+    v-remember-scroll
+    class="w-full h-full flex flex-col gap-4 overflow-auto thin-scrollbar"
+  >
+    <transition name="fade-slide-y">
       <div
         v-if="showPlansBeforeToday && travelPlansBeforeToday?.length"
         class="expired-plans-section"
       >
+        <div class="section-header text-gray-500 text-sm px-2 py-1">
+          已结束的计划
+        </div>
         <transition-group
           name="list"
           tag="div"
+          class="px-4"
         >
           <PlanCard
             v-for="(plan, index) in travelPlansBeforeToday"
@@ -58,19 +97,39 @@ onMounted(async () => {
     </div>
 
     <div class="current-plans-section">
-      <transition-group
-        name="list"
-        tag="div"
-      >
-        <PlanCard
-          v-for="(plan, index) in travelPlansFromToday"
-          :key="plan.id"
-          :plan="plan"
-          class="current-plan"
-        />
-      </transition-group>
+      <template v-if="travelPlansFromToday?.length">
+        <div
+          v-for="(plans, dateKey) in groupedPlans"
+          :key="dateKey"
+          class="plan-group"
+        >
+          <div
+            class="date-header rounded sticky top-0 z-1000 bg-white px-4 py-1 backdrop-blur-sm"
+          >
+            <span class="text-sm font-medium text-gray-800">
+              {{ formatDate(new Date(dateKey)) }}
+            </span>
+            <span class="ml-2 text-xs text-gray-500">
+              开始{{ plans.length }}个计划
+            </span>
+          </div>
+          <transition-group
+            name="list"
+            tag="div"
+            class="px-4"
+          >
+            <PlanCard
+              v-for="plan in plans"
+              :key="plan.id"
+              :plan="plan"
+              class="current-plan"
+            />
+          </transition-group>
+        </div>
+      </template>
+
       <div
-        v-if="!travelPlansFromToday?.length"
+        v-else
         class="empty-state"
       >
         <img
@@ -83,7 +142,7 @@ onMounted(async () => {
       </div>
       <div class="shrink-0 h-[220px]"></div>
     </div>
-  </van-list>
+  </div>
 </template>
 
 <style scoped>
@@ -112,13 +171,13 @@ onMounted(async () => {
 
 .expired-plan {
   opacity: 0.8;
-  transform: scale(0.98);
-  transition: all 0.3s ease;
 }
-
 .expired-plan:hover {
   opacity: 1;
-  transform: scale(1);
+}
+
+.expired-plan:active {
+  opacity: 1;
 }
 
 .empty-state {
@@ -132,6 +191,7 @@ onMounted(async () => {
   border-radius: 16px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
   margin-top: 20px;
+  animation: fadeIn 0.5s ease-out;
 }
 
 .empty-image {
@@ -153,35 +213,37 @@ onMounted(async () => {
   color: #888;
 }
 
-.fade-slide-enter-active,
-.fade-slide-leave-active {
+.date-header {
+  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+  margin-bottom: 8px;
+}
+
+/* 统一动画效果 */
+.fade-slide-y-enter-active,
+.fade-slide-y-leave-active {
   transition: all 0.4s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
-.fade-slide-enter-from,
-.fade-slide-leave-to {
+.fade-slide-y-enter-from,
+.fade-slide-y-leave-to {
   opacity: 0;
   transform: translateY(-20px);
 }
 
-.plans-container:deep(.van-pull-refresh__head) {
-  color: #666;
-}
-
-.plans-container:deep(.van-pull-refresh__loading) .van-loading__spinner {
-  color: #6a11cb;
-}
-/* 列表项动画 */
 .list-move,
 .list-enter-active,
 .list-leave-active {
-  transition: all 0.5s ease;
+  transition: all 0.4s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
-.list-enter-from,
+.list-enter-from {
+  opacity: 0;
+  transform: translateY(20px) scale(0.95);
+}
+
 .list-leave-to {
   opacity: 0;
-  transform: translateY(30px);
+  transform: translateX(30px);
 }
 
 .list-leave-active {
@@ -189,7 +251,24 @@ onMounted(async () => {
   width: calc(100% - 32px);
 }
 
-.list-move {
-  transition-timing-function: ease-out;
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* 卡片悬停效果 */
+.PlanCard {
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.PlanCard:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 }
 </style>

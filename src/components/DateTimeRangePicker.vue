@@ -54,10 +54,11 @@
         >
           <h3 class="font-medium text-gray-900 text-sm">选择时间范围</h3>
           <span
-            class="text-blue-500 font-medium text-sm"
+            class="text-blue-500 font-medium text-sm cursor-pointer select-none"
             @click="confirmSelection"
-            >确定</span
           >
+            确定
+          </span>
         </div>
 
         <!-- 内容区域 -->

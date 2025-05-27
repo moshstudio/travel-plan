@@ -1,5 +1,13 @@
 <script setup lang="ts">
-import { ref, reactive, onMounted, computed, markRaw, toRaw } from "vue";
+import {
+  ref,
+  reactive,
+  onMounted,
+  computed,
+  markRaw,
+  toRaw,
+  onActivated,
+} from "vue";
 import { useStore } from "@/store";
 import { showFailToast, showSuccessToast } from "vant";
 import { getCurrentLngLat, getLngLatAddress } from "@/api/tdt.ts";
@@ -30,7 +38,7 @@ const onSubmit = async () => {
     showFailToast("请填写必填信息");
     return;
   }
-  if (!store.positionSelectAddress) {
+  if (!store.planSelectAddress) {
     showFailToast("请选择目的地");
     return;
   }
@@ -56,7 +64,7 @@ const onSubmit = async () => {
     status: TravelPlanStatus.planned,
     priority: form.priority,
     tags: toRaw(form.tags),
-    location: toRaw(store.positionSelectAddress),
+    location: toRaw(store.planSelectAddress),
     version: 1,
     createdAt: Date.now(),
     updatedAt: Date.now(),
@@ -65,6 +73,7 @@ const onSubmit = async () => {
 
   await store.addTravelPlan(planData);
   showSuccessToast("计划创建成功");
+  store.planSelectAddress = undefined;
   back();
 };
 
@@ -72,12 +81,12 @@ const back = () => {
   router.push({ name: "Travel" });
 };
 
-onMounted(async () => {
-  if (!store.positionSelectAddress) {
+onActivated(async () => {
+  if (!store.planSelectAddress) {
     const lonlat = await getCurrentLngLat();
     if (lonlat) {
       const address = await getLngLatAddress(lonlat);
-      store.positionSelectAddress = {
+      store.planSelectAddress = {
         name: address,
         coordinates: {
           lng: lonlat.lng,
@@ -115,15 +124,17 @@ onMounted(async () => {
         />
         <PrioritySelector v-model="form.priority" />
         <TravelTagSelector
-          :v-model="form.tags"
-          @update:model-value="(v) => (form.tags = v)"
+          :tags="form.tags"
+          :custom-tags="store.customTravelPlanTags"
+          @update:tags="(tags) => (form.tags = tags)"
+          @update:custom-tags="(tags) => store.updateCustomTravelPlanTags(tags)"
         ></TravelTagSelector>
         <van-cell
           title="目的地"
-          :value="store.positionSelectAddress?.name || ''"
+          :value="store.planSelectAddress?.name || ''"
           clickable
           is-link
-          @click="() => $router.push({ name: 'PositionSelect' })"
+          @click="() => $router.push({ name: 'PlanPosition' })"
         />
         <van-field
           v-model="form.notes"

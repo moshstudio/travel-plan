@@ -6,6 +6,7 @@ import router from "@/router";
 import { storeToRefs } from "pinia";
 import PrioritySelector from "@/components/PrioritySelector.vue";
 import TravelTagSelector from "@/components/TravelTagSelector.vue";
+import { TravelChecklistType } from "@/data/checklist";
 
 const store = useStore();
 const { currentTravel } = storeToRefs(store);
@@ -62,6 +63,7 @@ const categories = [
   "电子设备",
   "证件",
   "洗漱用品",
+  "化妆品",
   "药品",
   "食品",
   "户外用品",
@@ -94,7 +96,12 @@ onMounted(() => {
         />
 
         <TravelTagSelector
-          v-model:model-value="form.tags"
+          :tags="form.tags"
+          :custom-tags="store.customTravelChecklistTags"
+          @update:tags="(tags) => (form.tags = tags)"
+          @update:custom-tags="
+            (tags) => store.updateCustomTravelChecklistTags(tags)
+          "
           :default-tags="categories"
           :max-tags="1"
         ></TravelTagSelector>

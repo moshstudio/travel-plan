@@ -3,35 +3,73 @@ import "ol/ol.css";
 import "ol-ext/dist/ol-ext.css";
 import _ from "lodash";
 import { useStore } from "@/store";
-import { ref, onActivated, onMounted } from "vue";
+import { ref, onActivated, onMounted, computed, toRaw, triggerRef } from "vue";
 import router from "@/router";
 import { fromLonLat, toLonLat } from "ol/proj";
 import Map from "ol/Map";
 import View from "ol/View";
 import TileLayer from "ol/layer/Tile";
 import XYZ from "ol/source/XYZ";
+import Zoom from "ol/control/Zoom";
 import {
   tdtXYZPoxyVECUrl,
   tdtXYZPoxyCVAUrl,
   getLngLatAddress,
   tdtSearch,
+  getCurrentLngLat,
 } from "@/api/tdt";
 
 import Placemark from "ol-ext/overlay/Placemark";
-import GeolocationButton from "ol-ext/control/GeolocationButton";
+import { MyLocationControl } from "./LocaltionControl";
 import { AddressType } from "@/data/address";
+import { TravelPlanType } from "@/data/TravelPlan";
+import { useRoute } from "vue-router";
 
+const planId = ref<string>();
+const plan = ref<TravelPlanType>();
 const store = useStore();
+const route = useRoute();
 
 const searchValue = ref("");
 const map = ref<Map>();
 const placemark = ref<Placemark>();
-const locationButton = ref<GeolocationButton>();
+const locationButton = ref<MyLocationControl>();
 
-const selectedAddress = ref();
+const selectedAddress = ref<AddressType>();
 const addressOptions = ref<AddressType[]>([]);
 const showAddressOptions = ref(false);
 
+const address = computed<AddressType | undefined>({
+  get() {
+    if (plan.value) {
+      return plan.value.location;
+    } else {
+      return store.planSelectAddress;
+    }
+  },
+  set(val) {
+    if (!val) {
+      return;
+    }
+    if (plan.value) {
+      plan.value.location = val;
+      store.updateTravelPlan(toRaw(plan.value));
+    } else {
+      store.planSelectAddress = val;
+    }
+  },
+});
+
+const loadData = async () => {
+  if (route.params.travelPlanId) {
+    planId.value = route.params.travelPlanId as string;
+    plan.value = store.getTravelPlanById(planId.value);
+  } else {
+    planId.value = undefined;
+    plan.value = undefined;
+  }
+  triggerRef(address);
+};
 const hideAddressOptions = () => {
   setTimeout(() => {
     showAddressOptions.value = false;
@@ -43,7 +81,7 @@ async function mapInit() {
     contentColor: "#000",
     onshow: function (position) {},
   });
-  locationButton.value = new GeolocationButton();
+  locationButton.value = new MyLocationControl();
   map.value = new Map({
     target: "mapDiv",
     layers: [
@@ -66,7 +104,7 @@ async function mapInit() {
       projection: "EPSG:3857",
     }),
     overlays: [placemark.value],
-    controls: [locationButton.value],
+    controls: [locationButton.value, new Zoom()],
   });
   locationButton.value.on("position" as any, async function (e: any) {
     if (e.coordinate) {
@@ -78,9 +116,11 @@ async function mapInit() {
       placemark.value?.hide();
       searchValue.value = address;
       selectedAddress.value = {
-        address,
-        lng: lnglat[0],
-        lat: lnglat[1],
+        name: address,
+        coordinates: {
+          lng: lnglat[0],
+          lat: lnglat[1],
+        },
       };
     }
   });
@@ -91,8 +131,10 @@ async function mapInit() {
     searchValue.value = address;
     selectedAddress.value = {
       name: address,
-      lng: lnglat[0],
-      lat: lnglat[1],
+      coordinates: {
+        lng: lnglat[0],
+        lat: lnglat[1],
+      },
     };
   });
 }
@@ -122,13 +164,15 @@ function selectAddressOption(address: AddressType) {
 }
 
 function onSelectAddress() {
-  store.positionSelectAddress = selectedAddress.value;
+  console.log("确定位置", selectedAddress.value);
+
+  address.value = selectedAddress.value;
   router.back();
 }
 
 function clearSelect() {
   searchValue.value = "";
-  selectedAddress.value = null;
+  selectedAddress.value = undefined;
   placemark.value?.hide();
   addressOptions.value = [];
 }
@@ -137,25 +181,21 @@ onActivated(async () => {
   if (!map.value) {
     await mapInit();
   }
-  if (store.positionSelectAddress && map.value) {
-    selectedAddress.value = store.positionSelectAddress;
-    searchValue.value = store.positionSelectAddress.name;
-    map.value.setView(
-      new View({
-        center: fromLonLat([
-          store.positionSelectAddress.coordinates.lng,
-          store.positionSelectAddress.coordinates.lat,
-        ]),
-        zoom: 14,
-        projection: "EPSG:3857",
-      })
-    );
-    placemark.value?.show(
-      fromLonLat([
-        store.positionSelectAddress.coordinates.lng,
-        store.positionSelectAddress.coordinates.lat,
-      ])
-    );
+  await loadData();
+  if (!address.value) {
+    const lonlat = await getCurrentLngLat();
+    if (lonlat) {
+      const add = await getLngLatAddress(lonlat);
+      selectAddressOption({
+        name: add,
+        coordinates: {
+          lng: lonlat.lng,
+          lat: lonlat.lat,
+        },
+      });
+    }
+  } else {
+    selectAddressOption(address.value);
   }
 });
 </script>

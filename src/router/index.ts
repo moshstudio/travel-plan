@@ -19,6 +19,12 @@ const routes: RouteRecordRaw[] = [
         name: "CreateTravel",
         component: () => import("@/views/travel/CreateTravel.vue"),
       },
+      {
+        path: "edit/:travelId",
+        name: "EditTravel",
+        component: () => import("@/views/travel/EditTravel.vue"),
+        props: true,
+      },
     ],
   },
   {
@@ -34,6 +40,12 @@ const routes: RouteRecordRaw[] = [
         path: "edit/:travelPlanId",
         name: "EditPlan",
         component: () => import("@/views/plan/EditPlan.vue"),
+        props: true,
+      },
+      {
+        path: "position/select/:travelPlanId?",
+        name: "PlanPosition",
+        component: () => import("@/components/map/PlanPositionSelect.vue"),
         props: true,
       },
     ],
@@ -56,9 +68,26 @@ const routes: RouteRecordRaw[] = [
     ],
   },
   {
-    path: "/position-select",
-    name: "PositionSelect",
-    component: () => import("@/components/map/PositionSelect.vue"),
+    path: "/expense",
+    redirect: { name: "Travel" },
+    children: [
+      {
+        path: "create",
+        name: "CreateExpense",
+        component: () => import("@/views/expense/CreateExpense.vue"),
+      },
+      {
+        path: "edit/:expenseId",
+        name: "EditExpense",
+        component: () => import("@/views/expense/EditExpense.vue"),
+      },
+      {
+        path: "position/select/:expenseId?",
+        name: "ExpensePosition",
+        component: () => import("@/components/map/ExpensePositionSelect.vue"),
+        props: true,
+      },
+    ],
   },
 ];
 

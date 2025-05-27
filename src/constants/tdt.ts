@@ -6,5 +6,9 @@ export const tdtPositionUrl = `http://api.tianditu.gov.cn/geocoder?postStr={'lon
 export const tdtXYZVECUrl = `http%3A%2F%2Ft0.tianditu.gov.cn%2FDataServer%3FT%3Dvec_w%26x%3D{x}%26y%3D{y}%26l%3D{z}%26tk%3D${tdtKey}`;
 // 矢量注记
 export const tdtXYZCVAUrl = `http%3A%2F%2Ft0.tianditu.gov.cn%2FDataServer%3FT%3Dcva_w%26x%3D{x}%26y%3D{y}%26l%3D{z}%26tk%3D${tdtKey}`;
+// 影像注记
+export const tdtXYZCIAUrl = `http%3A%2F%2Ft0.tianditu.gov.cn%2FDataServer%3FT%3Dcia_w%26x%3D{x}%26y%3D{y}%26l%3D{z}%26tk%3D${tdtKey}`;
 
 export const tdtSearchUrl = `http://api.tianditu.gov.cn/v2/search?postStr={"keyWord":"{keyword}","level":12,"mapBound":"-180,-90,180,90","queryType":4,"start":0,"count":20,"show":1}&type=query&tk=${tdtKey}`;
+
+export const tdtViewSearchUrl = `http://api.tianditu.gov.cn/v2/search?postStr={"keyWord":"{keyword}","queryRadius":"{queryRadius}","pointLonlat":"{pointLonlat}","queryType":3,"start":0,"count":20,"show":1}&type=query&tk=${tdtKey}`;

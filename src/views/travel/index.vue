@@ -2,11 +2,14 @@
 import { ref, onMounted, nextTick, computed } from "vue";
 import PlanList from "@/views/plan/index.vue";
 import CheckList from "@/views/checklist/index.vue";
+import ExpenseList from "@/views/expense/index.vue";
+import StatsList from "@/views/stats/index.vue";
 import { useStore } from "@/store";
 import { storeToRefs } from "pinia";
 import { useRouter } from "vue-router";
 import { getProxyUrl } from "@/utils/proxyUrl";
 import { tdtUrl } from "@/constants/tdt";
+import { showConfirmDialog } from "vant";
 
 const router = useRouter();
 const store = useStore();
@@ -15,9 +18,9 @@ const {
   travelPlansBeforeToday,
   travelPlansFromToday,
   travelPlans,
+  activeTabName,
 } = storeToRefs(store);
 
-const activeTab = ref("");
 const showTitlePopup = ref(false);
 
 const travelOptions = computed(() => {
@@ -30,18 +33,20 @@ const travelOptions = computed(() => {
 });
 
 const onClickAdd = () => {
-  switch (activeTab.value) {
+  console.log(activeTabName.value);
+
+  switch (activeTabName.value) {
     case "plan":
       router.push({ name: "CreatePlan" });
       break;
     case "checklist":
       router.push({ name: "CreateChecklist" });
       break;
-    case "fee":
-      router.push({ name: "CreateFee" });
+    case "expense":
+      router.push({ name: "CreateExpense" });
       break;
-    case "statistic":
-      router.push({ name: "Statistic" });
+    case "stats":
+      router.push({ name: "stats" });
       break;
     default:
       console.error("无效的选项");
@@ -85,7 +90,14 @@ onMounted(() => {
 
 onMounted(async () => {
   if (!currentTravel.value) {
-    router.push({ name: "CreateTravel" });
+    showConfirmDialog({
+      title: "提示",
+      message: "您还没有创建任何旅行, 是否立即创建?",
+      confirmButtonText: "创建旅行",
+      cancelButtonText: "取消",
+    }).then(() => {
+      router.push({ name: "CreateTravel" });
+    });
   }
 });
 
@@ -94,10 +106,40 @@ const showActionSheet = ref(false);
 
 const moreActions = [
   {
-    name: "创建旅行",
+    name: "创建新旅行",
     color: "green",
     callback: () => {
       router.push({ name: "CreateTravel" });
+    },
+  },
+  {
+    name: "重命名旅行",
+    color: "#1E90FF",
+    callback: () => {
+      if (!currentTravel.value) {
+        return;
+      }
+      router.push({
+        name: "EditTravel",
+        params: { travelId: currentTravel.value.travelId },
+      });
+    },
+  },
+  {
+    name: "删除此旅行",
+    color: "red",
+    callback: () => {
+      showConfirmDialog({
+        title: "提示",
+        message: "确定要删除此旅行吗?",
+        confirmButtonText: "确定",
+        cancelButtonText: "取消",
+      }).then(() => {
+        if (!currentTravel.value) {
+          return;
+        }
+        store.deleteTravel(currentTravel.value);
+      });
     },
   },
 ];
@@ -138,18 +180,21 @@ const moreActions = [
 
     <div class="app-background"></div>
     <div
-      class="w-full h-full overflow-auto rounded-lg shadow-lg thin-scrollbar"
+      class="w-full h-full overflow-hidden rounded-lg shadow-lg thin-scrollbar"
     >
       <van-tabs
-        v-model:active="activeTab"
+        v-model:active="store.activeTabName"
         background="linear-gradient(135deg, #6a11cb 0%, #2575fc 100%)"
         color="#fff"
         title-active-color="#fff"
         title-inactive-color="rgba(255,255,255,0.7)"
         sticky
         shrink
+        :swipeable="false"
         animated
+        lazy-render
         :offset-top="46"
+        class="w-full h-full overflow-hidden"
       >
         <van-tab
           title="计划"
@@ -167,19 +212,22 @@ const moreActions = [
         </van-tab>
         <van-tab
           title="花费"
-          name="fee"
+          name="expense"
           class="w-full h-full overflow-hidden"
-          >内容 2</van-tab
         >
+          <ExpenseList></ExpenseList>
+        </van-tab>
         <van-tab
           title="统计"
-          name="statistic"
+          name="stats"
           class="w-full h-full overflow-hidden"
-          >内容 3</van-tab
         >
+          <StatsList></StatsList>
+        </van-tab>
       </van-tabs>
     </div>
     <van-floating-bubble
+      v-if="activeTabName !== 'stats'"
       axis="xy"
       magnetic="x"
       icon="plus"
@@ -208,7 +256,7 @@ const moreActions = [
   </div>
 </template>
 
-<style scoped>
+<style scoped lang="less">
 .travel-plans-app {
   position: relative;
   width: 100%;
@@ -238,5 +286,15 @@ const moreActions = [
   z-index: 0;
   border-bottom-left-radius: 20px;
   border-bottom-right-radius: 20px;
+}
+:deep(.van-tabs__content) {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+:deep(.van-tab__panel) {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
 }
 </style>

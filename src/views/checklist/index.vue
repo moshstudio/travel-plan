@@ -3,6 +3,7 @@ import { ref, computed } from "vue";
 import ChecklistItemCard from "@/components/travelPlan/ChecklistItemCard.vue";
 import { useStore } from "@/store";
 import { storeToRefs } from "pinia";
+import { TravelChecklistType } from "@/data/checklist";
 
 const store = useStore();
 const { travelChecklists } = storeToRefs(store);
@@ -111,7 +112,10 @@ async function updatePackaged(item: TravelChecklistType, packed: boolean) {
 </script>
 
 <template>
-  <div class="travel-checklist-container">
+  <div
+    v-remember-scroll
+    class="w-full h-full p-0 flex flex-col overflow-auto thin-scrollbar"
+  >
     <!-- Simplified grouping control -->
     <div class="grouping-control">
       <van-button
@@ -136,13 +140,12 @@ async function updatePackaged(item: TravelChecklistType, packed: boolean) {
         @select="
           (action) => {
             groupingMode = action.value;
-            showGroupMenu = false;
           }
         "
       />
     </div>
 
-    <van-list class="travel-checklist-list">
+    <van-list class="travel-checklist-list thin-scrollbar">
       <div
         v-if="categories.length === 0"
         class="empty-state"
@@ -158,7 +161,7 @@ async function updatePackaged(item: TravelChecklistType, packed: boolean) {
 
       <transition-group
         v-else
-        name="category-fade"
+        name="fade-slide-y"
         tag="div"
         class="categories-container"
       >
@@ -196,18 +199,12 @@ async function updatePackaged(item: TravelChecklistType, packed: boolean) {
           </transition-group>
         </div>
       </transition-group>
-      <div class="list-bottom-spacer"></div>
+      <div class="shrink-0 h-[220px]"></div>
     </van-list>
   </div>
 </template>
 
 <style scoped>
-.travel-checklist-container {
-  display: flex;
-  flex-direction: column;
-  height: 100%;
-}
-
 .grouping-control {
   padding: 12px 16px;
   display: flex;
@@ -268,7 +265,9 @@ async function updatePackaged(item: TravelChecklistType, packed: boolean) {
   text-align: center;
   background: white;
   border-radius: 16px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
   margin-top: 20px;
+  animation: fadeIn 0.5s ease-out;
 }
 
 .empty-image {
@@ -303,29 +302,18 @@ async function updatePackaged(item: TravelChecklistType, packed: boolean) {
   background-color: #fafafa;
 }
 
-.list-bottom-spacer {
-  height: 80px;
-}
-
-/* 分类组动画 */
-.category-fade-move,
-.category-fade-enter-active,
-.category-fade-leave-active {
+/* 统一动画效果 */
+.fade-slide-y-enter-active,
+.fade-slide-y-leave-active {
   transition: all 0.4s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
-.category-fade-enter-from,
-.category-fade-leave-to {
+.fade-slide-y-enter-from,
+.fade-slide-y-leave-to {
   opacity: 0;
   transform: translateY(20px);
 }
 
-.category-fade-leave-active {
-  position: absolute;
-  width: 100%;
-}
-
-/* 列表项动画优化 */
 .list-move,
 .list-enter-active,
 .list-leave-active {
@@ -347,39 +335,6 @@ async function updatePackaged(item: TravelChecklistType, packed: boolean) {
   width: calc(100% - 24px);
 }
 
-/* 打包状态动画 */
-.packed-item {
-  transition: all 0.3s ease;
-  position: relative;
-}
-
-.packed-item::after {
-  content: "";
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-color: rgba(255, 255, 255, 0.5);
-  pointer-events: none;
-  transition: all 0.3s ease;
-}
-
-/* 添加轻微悬停效果 */
-.ChecklistItemCard {
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
-}
-
-.ChecklistItemCard:not(.packed-item):hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-}
-
-/* 优化空状态动画 */
-.empty-state {
-  animation: fadeIn 0.5s ease-out;
-}
-
 @keyframes fadeIn {
   from {
     opacity: 0;
@@ -391,9 +346,13 @@ async function updatePackaged(item: TravelChecklistType, packed: boolean) {
   }
 }
 
-/* 添加分组切换时的整体动画 */
-.categories-container {
-  position: relative;
-  transition: all 0.3s ease;
+/* 卡片悬停效果 */
+.ChecklistItemCard {
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.ChecklistItemCard:not(.packed-item):hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 }
 </style>

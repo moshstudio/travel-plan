@@ -29,6 +29,11 @@
   }
 }
 
+@font-face {
+  font-family: "alipuhui";
+  src: url("../assets/font/alipuhui.otf");
+}
+
 html,
 body,
 #app {

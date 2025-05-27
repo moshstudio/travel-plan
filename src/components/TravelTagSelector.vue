@@ -5,15 +5,15 @@
       :title="title"
       @click="showPopup = true"
       is-link
-      :class="{ 'text-gray-400': selectedTags.length === 0 }"
+      :class="{ 'text-gray-400': tempSelectedTags.length === 0 }"
     >
       <template #value>
         <div
-          v-if="selectedTags.length > 0"
+          v-if="tempSelectedTags.length > 0"
           class="selected-tags-container"
         >
           <van-tag
-            v-for="tag in selectedTags"
+            v-for="tag in tempSelectedTags"
             :key="tag"
             type="primary"
             size="medium"
@@ -63,7 +63,7 @@
           <h3 class="text-md font-semibold mb-3 text-gray-700">自定义标签</h3>
           <div class="flex gap-2 mb-3">
             <van-field
-              v-model="customTag"
+              v-model="inputingCustomTag"
               placeholder="输入自定义标签"
               clearable
               class="flex-1 rounded-lg"
@@ -73,7 +73,7 @@
               type="primary"
               size="small"
               @click="addCustomTag"
-              :disabled="!customTag.trim()"
+              :disabled="!inputingCustomTag.trim()"
               class="rounded-lg"
             >
               添加
@@ -105,6 +105,30 @@
           </div>
         </div>
 
+        <!-- 已选但不在标签列表中的标签 -->
+        <div
+          class="mb-4"
+          v-if="orphanTags.length > 0"
+        >
+          <h3 class="text-md font-semibold mb-3 text-gray-700">
+            已选但不在列表中的标签
+          </h3>
+          <div class="flex flex-wrap gap-2">
+            <van-tag
+              v-for="tag in orphanTags"
+              :key="'orphan-' + tag"
+              type="primary"
+              size="medium"
+              round
+              closeable
+              @close="removeOrphanTag(tag)"
+              class="px-3 py-1 transition-all duration-200 cursor-pointer select-none"
+            >
+              {{ tag }}
+            </van-tag>
+          </div>
+        </div>
+
         <!-- 操作按钮 -->
         <div class="mt-4 flex gap-3">
           <van-button
@@ -121,7 +145,7 @@
             @click="confirmSelection"
             class="rounded-lg bg-gradient-to-r from-blue-500 to-indigo-500"
           >
-            确定 ({{ selectedTags.length }}/{{ maxTags }})
+            确定 ({{ tempSelectedTags.length }}/{{ maxTags }})
           </van-button>
         </div>
       </div>
@@ -130,6 +154,7 @@
 </template>
 
 <script setup lang="ts">
+import _ from "lodash";
 import { showToast } from "vant";
 import { ref, watch, computed } from "vue";
 
@@ -143,13 +168,13 @@ const props = defineProps({
     type: String,
     default: "请选择标签",
   },
-  modelValue: {
-    type: Array as () => string[],
-    default: () => [],
-  },
   maxTags: {
     type: Number,
     default: 5,
+  },
+  tags: {
+    type: Array as () => string[],
+    default: () => [],
   },
   defaultTags: {
     type: Array as () => string[],
@@ -168,55 +193,58 @@ const props = defineProps({
       "行李托运",
       "机场接送",
       "当地美食",
+      "美食街",
       "特产购物",
       "景点拍照",
       "徒步路线",
-      "潜水体验",
-      "滑雪装备",
       "签证服务",
     ],
   },
+  customTags: {
+    type: Array as () => string[],
+    default: () => [],
+  },
 });
 
-// 定义 emit
-const emit = defineEmits(["update:modelValue", "cancel"]);
+const emit = defineEmits(["update:customTags", "update:tags", "cancel"]);
 
 const showPopup = ref(false);
-const customTag = ref("");
-const customTags = ref<string[]>([]);
-const selectedTags = ref<string[]>([]);
+const inputingCustomTag = ref("");
 const tempSelectedTags = ref<string[]>([]); // 临时存储用于取消操作
 
-// 初始化选中的标签
+// 计算已选但不在任何标签列表中的标签
+const orphanTags = computed(() => {
+  return tempSelectedTags.value.filter(
+    (tag) => !props.defaultTags.includes(tag) && !props.customTags.includes(tag)
+  );
+});
+
 watch(
-  () => props.modelValue,
-  (newVal) => {
-    selectedTags.value = [...newVal];
-    tempSelectedTags.value = [...newVal];
-    // 分离出自定义标签
-    customTags.value = newVal.filter((tag) => !props.defaultTags.includes(tag));
+  () => props.tags,
+  (newValue) => {
+    tempSelectedTags.value = [...newValue];
   },
-  { immediate: true }
+  { deep: true, immediate: true }
 );
 
 // 获取标签类型
 function getTagType(tag: string) {
-  return selectedTags.value.includes(tag) ? "primary" : "default";
+  return tempSelectedTags.value.includes(tag) ? "primary" : "default";
 }
 
 // 切换标签选择状态
 function toggleTag(tag: string) {
   if (props.maxTags === 1) {
     // 单选模式：直接替换当前选中的标签
-    selectedTags.value = [tag];
+    tempSelectedTags.value = [tag];
   } else {
     // 多选模式：正常切换
-    const index = selectedTags.value.indexOf(tag);
+    const index = tempSelectedTags.value.indexOf(tag);
     if (index > -1) {
-      selectedTags.value.splice(index, 1);
+      tempSelectedTags.value.splice(index, 1);
     } else {
-      if (selectedTags.value.length < props.maxTags) {
-        selectedTags.value.push(tag);
+      if (tempSelectedTags.value.length < props.maxTags) {
+        tempSelectedTags.value.push(tag);
       } else {
         showToast(`最多只能选择${props.maxTags}个标签`);
       }
@@ -226,24 +254,24 @@ function toggleTag(tag: string) {
 
 // 添加自定义标签
 function addCustomTag() {
-  const tag = customTag.value.trim();
+  const tag = inputingCustomTag.value.trim();
   if (tag) {
     if (props.maxTags === 1) {
       // 单选模式：直接替换当前选中的标签
-      if (!customTags.value.includes(tag)) {
-        customTags.value.push(tag);
+      if (!props.customTags.includes(tag)) {
+        emit("update:customTags", [tag, ...props.customTags]);
       }
-      selectedTags.value = [tag];
-      customTag.value = "";
+      tempSelectedTags.value = [tag];
+      inputingCustomTag.value = "";
     } else {
       // 多选模式：正常添加
-      if (!selectedTags.value.includes(tag)) {
-        if (selectedTags.value.length < props.maxTags) {
-          if (!customTags.value.includes(tag)) {
-            customTags.value.push(tag);
+      if (!tempSelectedTags.value.includes(tag)) {
+        if (tempSelectedTags.value.length < props.maxTags) {
+          if (!props.customTags.includes(tag)) {
+            emit("update:customTags", [tag, ...props.customTags]);
           }
-          selectedTags.value.push(tag);
-          customTag.value = "";
+          tempSelectedTags.value.push(tag);
+          inputingCustomTag.value = "";
         } else {
           showToast(`最多只能选择${props.maxTags}个标签`);
         }
@@ -254,32 +282,43 @@ function addCustomTag() {
 
 // 移除自定义标签
 function removeCustomTag(tag: string) {
-  const index = customTags.value.indexOf(tag);
+  const index = props.customTags.indexOf(tag);
   if (index > -1) {
-    customTags.value.splice(index, 1);
+    emit(
+      "update:customTags",
+      _.filter(props.customTags, (v) => v !== tag)
+    );
   }
 
-  const selectedIndex = selectedTags.value.indexOf(tag);
-  if (selectedIndex > -1) {
-    selectedTags.value.splice(selectedIndex, 1);
+  if (tempSelectedTags.value.includes(tag)) {
+    tempSelectedTags.value = _.filter(tempSelectedTags.value, (v) => v !== tag);
+  }
+
+  // 不从已选标签中移除，让它成为"孤儿"标签
+}
+
+// 移除孤儿标签
+function removeOrphanTag(tag: string) {
+  const index = tempSelectedTags.value.indexOf(tag);
+  if (index > -1) {
+    tempSelectedTags.value.splice(index, 1);
   }
 }
 
 // 确认选择
 function confirmSelection() {
-  tempSelectedTags.value = [...selectedTags.value];
-  emit("update:modelValue", selectedTags.value);
+  console.log("confirmSelection", [...tempSelectedTags.value]);
+
+  emit("update:tags", [...tempSelectedTags.value]);
   showPopup.value = false;
 }
 
 // 取消操作
 function handleCancel() {
+  console.log("取消操作", [...props.tags]);
+
   // 恢复之前的选择状态
-  selectedTags.value = [...tempSelectedTags.value];
-  // 更新自定义标签列表
-  customTags.value = selectedTags.value.filter(
-    (tag) => !props.defaultTags.includes(tag)
-  );
+  tempSelectedTags.value = [...props.tags];
   showPopup.value = false;
   emit("cancel");
 }

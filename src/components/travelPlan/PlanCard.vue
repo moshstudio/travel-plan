@@ -1,31 +1,35 @@
 <template>
   <div
-    class="plan-card"
+    class="plan-card relative w-full bg-white rounded-xl shadow-sm p-4 mb-4 overflow-hidden transition-all duration-300 active:scale-[0.98] border border-gray-100"
     :class="statusClasses"
     @click="handleCardClick"
   >
     <!-- 卡片顶部装饰条 -->
     <div
-      class="card-accent"
+      class="card-accent absolute top-0 left-0 w-1 h-full"
       :class="accentClasses"
     ></div>
 
     <!-- 优先级标记 -->
     <div
       v-if="plan.priority !== 'medium'"
-      class="priority-flag"
+      class="priority-flag absolute bottom-3 -right-5 w-20 py-0.5 text-center text-xs font-medium transform -rotate-45 z-100"
       :class="priorityClasses"
     >
       {{ priorityText }}
     </div>
 
-    <div class="card-content">
+    <div class="card-content relative z-10">
       <!-- 标题和状态区域 -->
-      <div class="card-header">
-        <h3 class="plan-title">{{ plan.title }}</h3>
-        <div class="header-right">
+      <div class="card-header flex justify-between items-start mb-3 gap-2">
+        <h3
+          class="plan-title flex-1 text-base font-semibold text-gray-800 truncate mr-2"
+        >
+          {{ plan.title }}
+        </h3>
+        <div class="header-right flex items-center gap-1.5">
           <div
-            class="status-badge"
+            class="status-badge text-xs px-2 py-1 rounded-xl font-medium whitespace-nowrap ml-2"
             :class="statusBadgeClasses"
           >
             {{ statusText }}
@@ -35,7 +39,7 @@
             size="mini"
             plain
             @click.stop="showMarkSheet = true"
-            class="action-button"
+            class="action-button p-0 w-6 h-6 min-w-6 border border-gray-200 bg-white text-gray-500"
           >
             <van-icon
               name="ellipsis"
@@ -48,12 +52,12 @@
       <!-- 标签区域 -->
       <div
         v-if="plan.tags && plan.tags.length > 0"
-        class="tags-container"
+        class="tags-container flex flex-wrap gap-1.5 mb-2.5"
       >
         <span
           v-for="(tag, index) in plan.tags"
           :key="index"
-          class="tag"
+          class="tag text-xs px-2 py-0.5 bg-gray-100 text-gray-600 rounded-xl inline-flex items-center"
         >
           {{ tag }}
         </span>
@@ -62,18 +66,18 @@
       <!-- 位置信息 -->
       <div
         v-if="plan.location"
-        class="location-info"
+        class="location-info flex items-center text-sm text-gray-500 mb-2.5"
       >
         <van-icon
           name="location-o"
-          class="location-icon"
+          class="location-icon mr-1.5 text-gray-400"
         />
         <span class="location-text">{{ plan.location.name }}</span>
       </div>
 
       <!-- 描述信息 -->
       <p
-        class="plan-description"
+        class="plan-description text-sm text-gray-600 mb-3 line-clamp-2 leading-relaxed"
         v-if="plan.description"
       >
         {{ plan.description }}
@@ -82,11 +86,11 @@
       <!-- 预算信息 -->
       <div
         v-if="plan.budget"
-        class="budget-info"
+        class="budget-info flex items-center text-sm text-gray-500 mb-3"
       >
         <van-icon
           name="balance-o"
-          class="budget-icon"
+          class="budget-icon mr-1.5 text-gray-400"
         />
         <span class="budget-text"
           >预算: ¥{{ plan.budget.toLocaleString() }}</span
@@ -96,31 +100,41 @@
       <!-- 进度条 -->
       <div
         v-if="status === 'in-progress'"
-        class="progress-container"
+        class="progress-container h-2 bg-gray-200 rounded mb-3 mt-4 relative"
       >
         <div
-          class="progress-bar"
+          class="progress-bar h-full rounded bg-gradient-to-r from-green-400 to-green-600 transition-all duration-600 ease-in-out"
           :style="{ width: `${progress}%` }"
         ></div>
-        <span class="progress-text">{{ progress }}%</span>
+        <span
+          class="progress-text absolute right-0 -top-4 text-xs text-green-500 font-medium"
+        >
+          {{ progress }}%
+        </span>
       </div>
 
       <!-- 时间信息 -->
-      <div class="time-info">
-        <div class="time-item">
+      <div class="time-info flex mt-2">
+        <div class="time-item flex items-center w-full">
           <van-icon
             name="calendar-o"
-            class="time-icon"
+            class="time-icon mr-2 text-gray-400 text-sm flex-shrink-0"
           />
-          <div class="time-details">
-            <span class="time-range">
-              {{ startTime.date }} {{ startTime.time }}
-              <span class="time-separator">→</span>
-              {{ endTime.date }} {{ endTime.time }}
+          <div class="time-details flex-1">
+            <span
+              class="time-range text-xs text-gray-600 inline-flex items-center gap-1 flex-wrap"
+            >
+              <span class="font-bold">{{ startTime.date }}</span>
+              {{ startTime.time }}
+              <span class="time-separator text-gray-400 mx-1 font-normal"
+                >→</span
+              >
+              <span class="font-bold">{{ endTime.date }}</span>
+              {{ endTime.time }}
             </span>
             <span
               v-if="plan.isAllDay"
-              class="all-day-badge"
+              class="all-day-badge text-xs px-1.5 py-0.5 bg-gray-100 text-gray-500 rounded ml-1.5"
               >全天</span
             >
           </div>
@@ -130,12 +144,12 @@
       <!-- 状态提示 -->
       <div
         v-if="statusHint"
-        class="status-hint"
+        class="status-hint flex items-center text-xs px-2.5 py-1.5 rounded mt-2.5"
         :class="hintClasses"
       >
         <van-icon
           :name="hintIcon"
-          class="hint-icon"
+          class="hint-icon mr-1.5 text-sm"
         />
         <span>{{ statusHint }}</span>
       </div>
@@ -145,7 +159,7 @@
     <van-action-sheet
       teleport="body"
       v-model:show="showMarkSheet"
-      :description="plan.title"
+      :title="plan.title"
       :actions="markSheetActions"
       cancel-text="取消"
       close-on-click-action
@@ -202,6 +216,12 @@ const markSheetActions = computed(() => {
       });
     } else {
       actions.push({
+        name: "编辑",
+        icon: "edit",
+        color: "green",
+        callback: handleCardClick,
+      });
+      actions.push({
         name: "标记完成",
         icon: "success",
         color: "#10B981",
@@ -211,10 +231,11 @@ const markSheetActions = computed(() => {
         },
       });
       actions.push({
-        name: "延长一天",
+        name: "延后一天",
         icon: "clock-o",
         color: "#1E90FF",
         callback: () => {
+          props.plan.startDateTime += 24 * 60 * 60 * 1000;
           props.plan.endDateTime += 24 * 60 * 60 * 1000;
           store.updateTravelPlan(props.plan);
         },
@@ -248,8 +269,8 @@ const markSheetActions = computed(() => {
 });
 
 const statusClasses = computed(() => {
-  if (isCancelled.value) return "cancelled";
-  return status.value.toString();
+  if (isCancelled.value) return "bg-gray-50";
+  return "";
 });
 
 const accentClasses = computed(() => {
@@ -320,22 +341,22 @@ const statusHint = computed(() => {
 const hintClasses = computed(() => {
   switch (status.value) {
     case "cancelled":
-      return `text-red-500 bg-red-50`;
+      return "text-red-500 bg-red-50";
     case "upcoming":
-      return `text-yellow-600 bg-yellow-50`;
+      return "text-yellow-600 bg-yellow-50";
     default:
-      return `text-gray-600 bg-gray-50`;
+      return "text-gray-600 bg-gray-50";
   }
 });
 
 const hintIcon = computed(() => {
   switch (status.value) {
     case "cancelled":
-      return `info-o`;
+      return "info-o";
     case "upcoming":
-      return `warning-o`;
+      return "warning-o";
     default:
-      return `clock-o`;
+      return "clock-o";
   }
 });
 
@@ -378,257 +399,8 @@ const handleCardClick = () => {
 </script>
 
 <style scoped>
-.plan-card {
-  position: relative;
-  width: 100%;
-  background: white;
-  border-radius: 12px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
-  padding: 16px;
-  margin-bottom: 16px;
-  overflow: hidden;
-  transition: all 0.3s ease;
-  border: 1px solid #f0f0f0;
-}
-
-.plan-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.1);
-}
-
-.card-accent {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 4px;
-  height: 100%;
-}
-
-.priority-flag {
-  position: absolute;
-  bottom: 12px; /* 替换原来的 top */
-  right: -22px; /* 保持原定位逻辑 */
-  width: 80px;
-  padding: 2px 0;
-  text-align: center;
-  font-size: 12px;
-  font-weight: 500;
-  transform: rotate(-45deg); /* 反向旋转 */
-  z-index: 2;
-}
-
-.card-content {
-  position: relative;
-  z-index: 1;
-}
-
-.card-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  margin-bottom: 12px;
-  gap: 8px;
-}
-
-.header-right {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.plan-title {
-  flex: 1;
-  font-size: 16px;
-  font-weight: 600;
-  color: #1f2937;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  margin-right: 8px;
-}
-
-.action-button {
-  padding: 0 6px;
-  min-width: 24px;
-  height: 24px;
-  border: 1px solid #e5e7eb;
-  background: white;
-  color: #6b7280;
-}
-
-.status-badge {
-  font-size: 12px;
-  padding: 4px 8px;
-  border-radius: 12px;
-  font-weight: 500;
-  white-space: nowrap;
-  margin-left: 8px;
-}
-
-.tags-container {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  margin-bottom: 10px;
-}
-
-.tag {
-  font-size: 12px;
-  padding: 2px 8px;
-  background-color: #f3f4f6;
-  color: #4b5563;
-  border-radius: 12px;
-  display: inline-flex;
-  align-items: center;
-}
-
-.location-info {
-  display: flex;
-  align-items: center;
-  font-size: 13px;
-  color: #6b7280;
-  margin-bottom: 10px;
-}
-
-.location-icon {
-  margin-right: 6px;
-  color: #9ca3af;
-}
-
-.plan-description {
-  font-size: 14px;
-  color: #4b5563;
-  margin-bottom: 12px;
-  line-height: 1.5;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
-
-.budget-info {
-  display: flex;
-  align-items: center;
-  font-size: 13px;
-  color: #6b7280;
-  margin-bottom: 12px;
-}
-
-.budget-icon {
-  margin-right: 6px;
-  color: #9ca3af;
-}
-
-.progress-container {
-  height: 8px;
-  background-color: #e5e7eb;
-  border-radius: 4px;
-  margin-bottom: 12px;
-  margin-top: 16px;
-  position: relative;
-}
-
-.progress-bar {
-  height: 100%;
-  border-radius: 4px;
-  background: linear-gradient(90deg, #10b981 0%, #059669 100%);
-  transition: width 0.6s ease;
-}
-
-.progress-text {
-  position: absolute;
-  right: 0;
-  top: -18px;
-  font-size: 11px;
-  color: #10b981;
-  font-weight: 500;
-}
-
-.time-info {
-  display: flex;
-  margin-top: 8px;
-}
-
-.time-item {
-  display: flex;
-  align-items: center;
-  width: 100%;
-}
-
-.time-icon {
-  margin-right: 8px;
-  color: #9ca3af;
-  font-size: 14px;
-  flex-shrink: 0;
-}
-
-.time-details {
-  flex: 1;
-}
-
-.time-range {
-  font-size: 13px;
-  color: #4b5563;
-  font-weight: 500;
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  flex-wrap: wrap;
-}
-
-.time-separator {
-  color: #9ca3af;
-  margin: 0 4px;
-  font-weight: normal;
-}
-
-.all-day-badge {
-  font-size: 11px;
-  padding: 2px 6px;
-  background-color: #f3f4f6;
-  color: #6b7280;
-  border-radius: 4px;
-  margin-left: 6px;
-}
-
-.status-hint {
-  display: flex;
-  align-items: center;
-  font-size: 12px;
-  padding: 6px 10px;
-  border-radius: 6px;
-  margin-top: 10px;
-}
-
-.hint-icon {
-  margin-right: 6px;
-  font-size: 14px;
-}
-
-/* 不同状态下的卡片样式 */
-.plan-card.planned {
-  border-left: 4px solid #9ca3af;
-}
-
-.plan-card.upcoming {
-  border-left: 4px solid #f59e0b;
-}
-
-.plan-card.in-progress {
-  border-left: 4px solid #10b981;
-}
-
-.plan-card.completed {
-  border-left: 4px solid #3b82f6;
-}
-
-.plan-card.expired {
-  border-left: 4px solid #ef4444;
-}
-
+/* 取消状态的特殊样式 */
 .plan-card.cancelled {
-  background-color: #f3f4f6;
-  color: #9ca3af;
   position: relative;
 }
 
@@ -658,27 +430,5 @@ const handleCardClick = () => {
   font-weight: 500;
   color: #1f2937;
   padding: 12px 16px;
-}
-
-/* 响应式设计 */
-@media (max-width: 340px) {
-  .time-range {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 0;
-  }
-
-  .time-separator {
-    display: none;
-  }
-
-  .plan-title {
-    font-size: 15px;
-  }
-
-  .status-badge {
-    font-size: 11px;
-    padding: 3px 6px;
-  }
 }
 </style>

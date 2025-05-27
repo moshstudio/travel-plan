@@ -1,4 +1,4 @@
-interface TravelChecklistType {
+export interface TravelChecklistType {
   id: number; // 唯一标识符，用于操作特定项
   itemId: string;
   travelId: string;

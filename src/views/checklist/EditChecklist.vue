@@ -6,6 +6,7 @@ import router from "@/router";
 import { storeToRefs } from "pinia";
 import PrioritySelector from "@/components/PrioritySelector.vue";
 import TravelTagSelector from "@/components/TravelTagSelector.vue";
+import { TravelChecklistType } from "@/data/checklist";
 
 const { itemId: checklistItemId } = defineProps({
   itemId: String,
@@ -129,7 +130,12 @@ onActivated(async () => {
         />
 
         <TravelTagSelector
-          v-model:model-value="form.tags"
+          :tags="form.tags"
+          :custom-tags="store.customTravelChecklistTags"
+          @update:tags="(tags) => (form.tags = tags)"
+          @update:custom-tags="
+            (tags) => store.updateCustomTravelChecklistTags(tags)
+          "
           :default-tags="categories"
           :max-tags="1"
         ></TravelTagSelector>

@@ -3,6 +3,8 @@ import {
   tdtXYZVECUrl,
   tdtXYZCVAUrl,
   tdtSearchUrl,
+  tdtViewSearchUrl,
+  tdtXYZCIAUrl,
 } from "@/constants/tdt";
 import { AddressType } from "@/data/address";
 import { getProxyPort, getProxyUrl } from "@/utils/proxyUrl";
@@ -45,7 +47,11 @@ export async function getLngLatAddress(lonlat: {
     },
   });
   const data = await response.json();
-  console.log("getLngLatAddress", data);
+  if (!data.result.formatted_address) {
+    return (
+      data.result.addressComponent.nation + data.result.addressComponent.address
+    );
+  }
 
   return data.result.formatted_address;
 }
@@ -62,6 +68,12 @@ export async function tdtXYZPoxyCVAUrl() {
   return proxyUrl;
 }
 
+export async function tdtXYZPoxyCIAUrl() {
+  const port = await getProxyPort();
+  const proxyUrl = `http://127.0.0.1:${port}/proxy/_/` + tdtXYZCIAUrl;
+  return proxyUrl;
+}
+
 export async function tdtSearch(keyword: string): Promise<AddressType[]> {
   const url = tdtSearchUrl.replace("{keyword}", keyword);
   try {
@@ -75,8 +87,45 @@ export async function tdtSearch(keyword: string): Promise<AddressType[]> {
       },
     });
     const data = await response.json();
-    console.log(data);
     return data.suggests?.map((item: any) => {
+      const [lon, lat] = item.lonlat.split(",");
+      return {
+        name: item.address + " " + item.name,
+        address: item.address,
+        coordinates: {
+          lng: Number(lon),
+          lat: Number(lat),
+        },
+      } as AddressType;
+    });
+  } catch (error) {
+    console.error("tdtSearch error:", error);
+    return [];
+  }
+}
+
+export async function tdtViewSearch(
+  keyword: string,
+  queryRadius: string,
+  pointLonlat: string
+): Promise<AddressType[]> {
+  const url = tdtViewSearchUrl
+    .replace("{keyword}", keyword)
+    .replace("{queryRadius}", queryRadius)
+    .replace("{pointLonlat}", pointLonlat);
+
+  try {
+    const response = await fetch(url, {
+      headers: {
+        accept:
+          "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
+        "upgrade-insecure-requests": "1",
+        "User-Agent":
+          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0.0.0 Safari/537.36",
+      },
+    });
+    const data = await response.json();
+    return data.pois?.map((item: any) => {
       const [lon, lat] = item.lonlat.split(",");
       return {
         name: item.address + " " + item.name,

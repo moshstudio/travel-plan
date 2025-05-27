@@ -10,8 +10,10 @@
     "tauri": "tauri"
   },
   "dependencies": {
+    "@iconify/vue": "^5.0.0",
     "@tailwindcss/vite": "^4.1.6",
     "@tauri-apps/api": "^2",
+    "tauri-plugin-commands": "file:tauri-plugin-commands",
     "@tauri-apps/plugin-http": "~2",
     "@tauri-apps/plugin-log": "~2",
     "@tauri-apps/plugin-opener": "^2",
@@ -20,6 +22,7 @@
     "@vueuse/rxjs": "^13.2.0",
     "date-fns": "^4.1.0",
     "dexie": "^4.0.11",
+    "font-awesome": "^4.7.0",
     "leaflet": "^1.9.4",
     "leaflet.chinatmsproviders": "^3.0.6",
     "lodash": "^4.17.21",
@@ -31,6 +34,7 @@
     "tailwindcss": "^4.1.6",
     "vant": "^4.9.19",
     "vue": "^3.5.13",
+    "vue-datetime3": "file:packages/vue-datetime3",
     "vue-router": "4",
     "vue-tianditu2": "^3.0.1"
   },

@@ -13,7 +13,6 @@ import { useStore } from "@/store";
 import { showFailToast, showSuccessToast } from "vant";
 import { getCurrentLngLat, getLngLatAddress } from "@/api/tdt.ts";
 import router from "@/router";
-import * as datefns from "date-fns";
 import { storeToRefs } from "pinia";
 import { TravelPlanStatus, TravelPlanType } from "@/data/TravelPlan";
 import PrioritySelector from "@/components/PrioritySelector.vue";
@@ -39,6 +38,7 @@ const form = reactive({
   isAllDay: false,
   notes: "",
   priority: "medium" as "low" | "medium" | "high",
+  location: plan.value?.location,
 });
 
 // 加载已有计划数据
@@ -58,7 +58,7 @@ const loadPlanData = async () => {
   form.priority = plan.value.priority;
   form.isAllDay = plan.value.isAllDay || false;
   form.notes = plan.value.description || "";
-  store.positionSelectAddress = plan.value.location;
+  form.location = plan.value.location;
 };
 
 // 提交表单 - 更新计划
@@ -67,7 +67,7 @@ const onSubmit = async () => {
     showFailToast("请填写必填信息");
     return;
   }
-  if (!store.positionSelectAddress) {
+  if (!form.location) {
     showFailToast("请选择目的地");
     return;
   }
@@ -97,7 +97,7 @@ const onSubmit = async () => {
     status: TravelPlanStatus.planned,
     priority: form.priority,
     tags: toRaw(form.tags),
-    location: toRaw(store.positionSelectAddress),
+    location: toRaw(form.location),
     version: 1,
     createdAt: Date.now(),
     updatedAt: Date.now(),
@@ -118,24 +118,6 @@ const back = () => {
   router.back();
 };
 
-onMounted(async () => {
-  await loadPlanData();
-
-  // 如果没有选择位置，则使用当前位置
-  if (!store.positionSelectAddress) {
-    const lonlat = await getCurrentLngLat();
-    if (lonlat) {
-      const address = await getLngLatAddress(lonlat);
-      store.positionSelectAddress = {
-        name: address,
-        coordinates: {
-          lng: lonlat.lng,
-          lat: lonlat.lat,
-        },
-      };
-    }
-  }
-});
 onActivated(async () => {
   await loadPlanData();
 });
@@ -173,16 +155,24 @@ onActivated(async () => {
           :time-selectable="true"
         />
         <PrioritySelector v-model="form.priority" />
-        <TravelTagSelector v-model="form.tags"></TravelTagSelector>
+        <TravelTagSelector
+          :tags="form.tags"
+          :custom-tags="store.customTravelPlanTags"
+          @update:tags="(tags) => (form.tags = tags)"
+          @update:custom-tags="(tags) => store.updateCustomTravelPlanTags(tags)"
+        ></TravelTagSelector>
         <van-cell
           title="目的地"
-          :value="store.positionSelectAddress?.name || ''"
+          :value="form.location?.name || ''"
           clickable
           is-link
-          @click="() => $router.push({ name: 'PositionSelect' })"
+          @click="
+            () =>
+              $router.push({ name: 'PlanPosition', params: { travelPlanId } })
+          "
         />
         <van-field
-          v-model="plan.description"
+          v-model="form.notes"
           rows="3"
           autosize
           label="备注"

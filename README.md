@@ -1,16 +1,64 @@
-# Tauri + Vue + TypeScript
+# 🧭 旅行助手 | Travel Plan
 
-This template should help get you started developing with Vue 3 and TypeScript in Vite. The template uses Vue 3 `<script setup>` SFCs, check out the [script setup docs](https://v3.vuejs.org/api/sfc-script-setup.html#sfc-script-setup) to learn more.
+**一款专业的旅行规划与记录工具**
 
-## Recommended IDE Setup
+## ⏬下载地址
 
-- [VS Code](https://code.visualstudio.com/) + [Volar](https://marketplace.visualstudio.com/items?itemName=Vue.volar) + [Tauri](https://marketplace.visualstudio.com/items?itemName=tauri-apps.tauri-vscode) + [rust-analyzer](https://marketplace.visualstudio.com/items?itemName=rust-lang.rust-analyzer)
+在项目releases中进行下载
 
-## Type Support For `.vue` Imports in TS
+## ✨ 核心功能
 
-Since TypeScript cannot handle type information for `.vue` imports, they are shimmed to be a generic Vue component type by default. In most cases this is fine if you don't really care about component prop types outside of templates. However, if you wish to get actual prop types in `.vue` imports (for example to get props validation when using manual `h(...)` calls), you can enable Volar's Take Over mode by following these steps:
+### 📅 行程规划
 
-1. Run `Extensions: Show Built-in Extensions` from VS Code's command palette, look for `TypeScript and JavaScript Language Features`, then right click and select `Disable (Workspace)`. By default, Take Over mode will enable itself if the default TypeScript extension is disabled.
-2. Reload the VS Code window by running `Developer: Reload Window` from the command palette.
+- 创建个性化旅行计划
 
-You can learn more about Take Over mode [here](https://github.com/johnsoncodehk/volar/discussions/471).
+<img src="./docs/images/create-travel-plan.jpg" height="600" />
+
+- 设置每日行程安排
+
+<img src="./docs/images/travel-plan-list.jpg" height="600" />
+
+- 添加重要地点和活动提醒(未完成)
+
+### 🧳 行李管理
+
+- 智能生成行李清单模板(未完成)
+- 自定义物品分类（衣物、电子设备、洗漱用品等）
+
+<img src="./docs/images/create-checklist.jpg" height="600" />
+
+- 打包状态实时追踪
+
+<img src="./docs/images/checklist.jpg" height="600" />
+
+### 💰 费用追踪
+
+- 记录各类旅行支出（交通、住宿、餐饮等）
+
+<img src="./docs/images/travel-expense.jpg" height="600" />
+
+- 支持多币种自动换算(未完成)
+- 生成费用统计报表
+
+<img src="./docs/images/expense-list.jpg" height="600" />
+
+### 📷 旅行记忆
+
+- 按时间线记录旅程点滴
+
+<img src="./docs/images/travel-stats1.jpg" height="600" />
+<img src="./docs/images/travel-stats2.jpg" height="600" />
+<img src="./docs/images/travel-stats3.jpg" height="600" />
+<img src="./docs/images/travel-stats4.jpg" height="600" />
+
+- 添加照片和文字备注(未完成)
+
+- 生成专属旅行日记(未完成)
+
+## 🚀 快速开始
+
+1. 创建新的旅行
+2. 添加行程计划和清单
+3. 开始规划你的完美旅程！
+
+> "让每一次旅行都成为美好的回忆"

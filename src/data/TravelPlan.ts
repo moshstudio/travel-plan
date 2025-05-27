@@ -24,7 +24,7 @@ export interface TravelPlanType {
   endDateTime: number;
   isAllDay?: boolean; // 是否为全天事件(跨天计划通常设为false)
   timezone: string; //"Asia/Shanghai"; // 时区信息
-  location?: AddressType;
+  location: AddressType;
   status: TravelPlanStatus;
   priority: "low" | "medium" | "high"; // 优先级
   budget?: number; // 预算(元)
