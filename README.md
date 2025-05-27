@@ -2,9 +2,9 @@
 
 **一款专业的旅行规划与记录工具**
 
-## ⏬下载地址
+## ⏬ 下载地址
 
-在项目releases中进行下载
+在项目 releases 中进行下载
 
 ## ✨ 核心功能
 
@@ -35,7 +35,7 @@
 
 - 记录各类旅行支出（交通、住宿、餐饮等）
 
-<img src="./docs/images/travel-expense.jpg" height="600" />
+<img src="./docs/images/create-expense.jpg" height="600" />
 
 - 支持多币种自动换算(未完成)
 - 生成费用统计报表
