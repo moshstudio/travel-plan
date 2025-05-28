@@ -10,6 +10,8 @@ import Point from "ol/geom/Point";
 import { Style, Icon, Circle, Fill, Stroke } from "ol/style";
 import VectorLayer from "ol/layer/Vector";
 import VectorSource from "ol/source/Vector";
+import { useDisplayStore } from "@/store/displayStore";
+import { ipapiGetLngLat } from "@/api/ipapi";
 
 // 定义定位成功事件接口
 export interface PositionEvent extends BaseEvent {
@@ -124,6 +126,19 @@ export class MyLocationControl extends Control {
     this.deactivate_();
 
     // 使用浏览器 Geolocation API
+    // const displayStore = useDisplayStore();
+    // if (displayStore.isWeb) {
+    //   ipapiGetLngLat().then(async (result) => {
+    //     console.log("t get position", result);
+    //     this.handleGeolocationSuccess_({
+    //       coords: {
+    //         latitude: result?.lat,
+    //         longitude: result?.lng,
+    //       },
+    //       timestamp: Date.now(),
+    //     } as GeolocationPosition);
+    //   });
+    // } else
     if ("geolocation" in navigator) {
       this.geolocationWatchId_ = navigator.geolocation.watchPosition(
         this.handleGeolocationSuccess_.bind(this),
@@ -145,7 +160,9 @@ export class MyLocationControl extends Control {
   // 取消激活定位功能
   private deactivate_() {
     if (this.geolocationWatchId_ !== null) {
-      navigator.geolocation.clearWatch(this.geolocationWatchId_);
+      if (navigator.geolocation) {
+        navigator.geolocation.clearWatch(this.geolocationWatchId_);
+      }
       this.geolocationWatchId_ = null;
     }
     this.button_.disabled = false;

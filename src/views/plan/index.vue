@@ -50,12 +50,6 @@ const groupedPlans = computed(() => {
 
   return groups;
 });
-
-onMounted(async () => {
-  if (!currentTravel.value) {
-    router.push({ name: "CreateTravel" });
-  }
-});
 </script>
 
 <template>

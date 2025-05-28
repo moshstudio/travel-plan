@@ -7,8 +7,14 @@ import {
   tdtXYZCIAUrl,
 } from "@/constants/tdt";
 import { AddressType } from "@/data/address";
+import { useDisplayStore } from "@/store/displayStore";
 import { getProxyPort, getProxyUrl } from "@/utils/proxyUrl";
 import { fetch } from "@tauri-apps/plugin-http";
+
+function encodeUrl(url: string): string {
+  return encodeURIComponent(url).replace(/%7B/g, "{").replace(/%7D/g, "}");
+}
+
 export async function getCurrentLngLat(): Promise<{
   lng: number;
   lat: number;
@@ -36,16 +42,23 @@ export async function getLngLatAddress(lonlat: {
   const url = tdtPositionUrl
     .replace("{lng}", lonlat.lng.toPrecision())
     .replace("{lat}", lonlat.lat.toPrecision());
-
-  const response = await fetch(url, {
-    headers: {
-      accept:
-        "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
-      "upgrade-insecure-requests": "1",
-      "User-Agent":
-        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0.0.0 Safari/537.36",
-    },
-  });
+  const displayStore = useDisplayStore();
+  let _fetch = window.fetch;
+  let options = undefined;
+  if (!displayStore.isWeb) {
+    _fetch = fetch;
+    options = {
+      headers: {
+        "Access-Control-Allow-Origin": "*",
+        accept:
+          "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
+        "upgrade-insecure-requests": "1",
+        "User-Agent":
+          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0.0.0 Safari/537.36",
+      },
+    };
+  }
+  const response = await _fetch(url, options);
   const data = await response.json();
   if (!data.result.formatted_address) {
     return (
@@ -57,35 +70,61 @@ export async function getLngLatAddress(lonlat: {
 }
 
 export async function tdtXYZPoxyVECUrl() {
-  const port = await getProxyPort();
-  const proxyUrl = `http://127.0.0.1:${port}/proxy/_/` + tdtXYZVECUrl;
-  return proxyUrl;
+  const displayStore = useDisplayStore();
+  if (displayStore.isWeb) {
+    return tdtXYZVECUrl;
+  } else {
+    const port = await getProxyPort();
+    const proxyUrl =
+      `http://127.0.0.1:${port}/proxy/_/` + encodeUrl(tdtXYZVECUrl);
+    return proxyUrl;
+  }
 }
 
 export async function tdtXYZPoxyCVAUrl() {
-  const port = await getProxyPort();
-  const proxyUrl = `http://127.0.0.1:${port}/proxy/_/` + tdtXYZCVAUrl;
-  return proxyUrl;
+  const displayStore = useDisplayStore();
+  if (displayStore.isWeb) {
+    return tdtXYZCVAUrl;
+  } else {
+    const port = await getProxyPort();
+    const proxyUrl =
+      `http://127.0.0.1:${port}/proxy/_/` + encodeUrl(tdtXYZCVAUrl);
+    return proxyUrl;
+  }
 }
 
 export async function tdtXYZPoxyCIAUrl() {
-  const port = await getProxyPort();
-  const proxyUrl = `http://127.0.0.1:${port}/proxy/_/` + tdtXYZCIAUrl;
-  return proxyUrl;
+  const displayStore = useDisplayStore();
+  if (displayStore.isWeb) {
+    return tdtXYZCIAUrl;
+  } else {
+    const port = await getProxyPort();
+    const proxyUrl =
+      `http://127.0.0.1:${port}/proxy/_/` + encodeUrl(tdtXYZCIAUrl);
+    return proxyUrl;
+  }
 }
 
 export async function tdtSearch(keyword: string): Promise<AddressType[]> {
   const url = tdtSearchUrl.replace("{keyword}", keyword);
   try {
-    const response = await fetch(url, {
-      headers: {
-        accept:
-          "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
-        "upgrade-insecure-requests": "1",
-        "User-Agent":
-          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0.0.0 Safari/537.36",
-      },
-    });
+    const displayStore = useDisplayStore();
+    let _fetch = window.fetch;
+    let options = undefined;
+    if (!displayStore.isWeb) {
+      _fetch = fetch;
+      options = {
+        headers: {
+          "Access-Control-Allow-Origin": "*",
+          accept:
+            "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
+          "upgrade-insecure-requests": "1",
+          "User-Agent":
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0.0.0 Safari/537.36",
+        },
+      };
+    }
+    const response = await _fetch(url, options);
     const data = await response.json();
     return data.suggests?.map((item: any) => {
       const [lon, lat] = item.lonlat.split(",");
@@ -115,15 +154,23 @@ export async function tdtViewSearch(
     .replace("{pointLonlat}", pointLonlat);
 
   try {
-    const response = await fetch(url, {
-      headers: {
-        accept:
-          "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
-        "upgrade-insecure-requests": "1",
-        "User-Agent":
-          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0.0.0 Safari/537.36",
-      },
-    });
+    const displayStore = useDisplayStore();
+    let _fetch = window.fetch;
+    let options = undefined;
+    if (!displayStore.isWeb) {
+      _fetch = fetch;
+      options = {
+        headers: {
+          "Access-Control-Allow-Origin": "*",
+          accept:
+            "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
+          "upgrade-insecure-requests": "1",
+          "User-Agent":
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0.0.0 Safari/537.36",
+        },
+      };
+    }
+    const response = await _fetch(url, options);
     const data = await response.json();
     return data.pois?.map((item: any) => {
       const [lon, lat] = item.lonlat.split(",");

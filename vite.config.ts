@@ -47,4 +47,5 @@ export default defineConfig(async () => ({
       "@": path.resolve(__dirname, "./src"),
     },
   },
+  base: "/travel-plan", // 替换为你的仓库名
 }));

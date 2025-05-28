@@ -17,10 +17,10 @@ import router from "@/router";
 
 export const useStore = defineStore("store", () => {
   const nowRef = useNow({ interval: 1000 });
-  const isDark = useStorage("isDark", false);
-  const activeTabName = useStorage("activeTabName", "plan");
+  
   const planSelectAddress = ref<AddressType>();
   const expenseSelectAddress = ref<AddressType>();
+  
 
   /**旅行 */
   const currentTravel = useObservable<TravelType | undefined>(
@@ -379,8 +379,6 @@ export const useStore = defineStore("store", () => {
 
   return {
     now: nowRef,
-    isDark,
-    activeTabName,
     planSelectAddress,
     expenseSelectAddress,
 

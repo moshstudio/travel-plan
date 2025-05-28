@@ -1,8 +1,34 @@
 <script setup lang="ts">
-import { useStore } from "./store";
 import { storeToRefs } from "pinia";
-const store = useStore();
-const { isDark } = storeToRefs(store);
+import { useDisplayStore } from "./store/displayStore";
+import { onMounted } from "vue";
+import { tdtUrl } from "./constants/tdt";
+import { getProxyUrl } from "./utils/proxyUrl";
+
+const displayStore = useDisplayStore();
+const { isDark } = storeToRefs(displayStore);
+function loadTianDiTuAPI() {
+  return new Promise<void>(async (resolve, reject) => {
+    const script = document.createElement("script");
+    const url = displayStore.isWeb ? tdtUrl : await getProxyUrl(tdtUrl);
+    script.src = url!;
+    script.type = "text/javascript";
+    script.onload = () => {
+      console.log("天地图 API 加载成功");
+      resolve();
+    };
+
+    script.onerror = () => {
+      console.error("天地图 API 加载失败");
+      reject(new Error("天地图 API 加载失败"));
+    };
+
+    document.head.appendChild(script);
+  });
+}
+onMounted(() => {
+  loadTianDiTuAPI();
+});
 </script>
 
 <template>

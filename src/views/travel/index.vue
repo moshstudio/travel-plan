@@ -10,16 +10,19 @@ import { useRouter } from "vue-router";
 import { getProxyUrl } from "@/utils/proxyUrl";
 import { tdtUrl } from "@/constants/tdt";
 import { showConfirmDialog } from "vant";
+import { useDisplayStore } from "@/store/displayStore";
+import { sleep } from "@/utils";
 
 const router = useRouter();
 const store = useStore();
+const displayStore = useDisplayStore();
 const {
   currentTravel,
   travelPlansBeforeToday,
   travelPlansFromToday,
   travelPlans,
-  activeTabName,
 } = storeToRefs(store);
+const { activeTabName } = storeToRefs(displayStore);
 
 const showTitlePopup = ref(false);
 
@@ -65,30 +68,9 @@ const onSelectTravel = (value: any) => {
   store.switchTravel(newTravel);
   showTitlePopup.value = false;
 };
-function loadTianDiTuAPI() {
-  return new Promise<void>(async (resolve, reject) => {
-    const script = document.createElement("script");
-    const url = await getProxyUrl(tdtUrl);
-    script.src = url!;
-    script.type = "text/javascript";
-    script.onload = () => {
-      console.log("天地图 API 加载成功");
-      resolve();
-    };
-
-    script.onerror = () => {
-      console.error("天地图 API 加载失败");
-      reject(new Error("天地图 API 加载失败"));
-    };
-
-    document.head.appendChild(script);
-  });
-}
-onMounted(() => {
-  loadTianDiTuAPI();
-});
 
 onMounted(async () => {
+  await sleep(1000);
   if (!currentTravel.value) {
     showConfirmDialog({
       title: "提示",
@@ -183,7 +165,7 @@ const moreActions = [
       class="w-full h-full overflow-hidden rounded-lg shadow-lg thin-scrollbar"
     >
       <van-tabs
-        v-model:active="store.activeTabName"
+        v-model:active="activeTabName"
         background="linear-gradient(135deg, #6a11cb 0%, #2575fc 100%)"
         color="#fff"
         title-active-color="#fff"

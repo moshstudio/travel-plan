@@ -13,7 +13,7 @@ const planStatusStats = computed(() => {
   const stats = {
     planned: 0,
     upcoming: 0,
-    inProgress: 0,
+    "in-progress": 0,
     expired: 0,
     completed: 0,
     cancelled: 0,
@@ -28,13 +28,13 @@ const planStatusStats = computed(() => {
   return stats;
 });
 
-const getStatusText = (status: keyof typeof TravelPlanStatus) => {
+const getStatusText = (status: any) => {
   switch (status) {
     case "planned":
       return "计划";
     case "upcoming":
       return "即将开始";
-    case "inProgress":
+    case "in-progress":
       return "进行中";
     case "expired":
       return "已结束";
