@@ -12,11 +12,310 @@
       content="width=device-width, initial-scale=1.0"
     />
     <title>旅行计划</title>
-    <script type="module" crossorigin src="/travel-plan/assets/index-BiKhJLtw.js"></script>
-    <link rel="stylesheet" crossorigin href="/travel-plan/assets/index-C3k1pVry.css">
+    <style>
+      /* Splash 动画样式 */
+      body {
+        margin: 0;
+        overflow: hidden;
+      }
+
+      .splash-container {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(to right, #a1c4fd, #c2e9fb);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        z-index: 9999;
+      }
+
+      .scene {
+        position: relative;
+        width: 80%;
+        max-width: 800px;
+        height: 300px;
+        overflow: hidden;
+        border-radius: 20px;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+      }
+
+      .sky {
+        position: absolute;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(to bottom, #87ceeb 0%, #e0f7fa 100%);
+      }
+
+      .plane-container {
+        position: absolute;
+        width: 150px;
+        height: 80px;
+        left: -150px;
+        top: 38%;
+        transform: translateY(-50%);
+        z-index: 20;
+        animation: planeEnter 1s ease-out forwards,
+          planeHover 2s ease-in-out 1s infinite;
+      }
+
+      .plane {
+        width: 100%;
+        height: 100%;
+      }
+
+      .cloud {
+        position: absolute;
+        background: white;
+        border-radius: 50%;
+        filter: blur(8px);
+        opacity: 0.9;
+      }
+
+      .sun {
+        position: absolute;
+        width: 80px;
+        height: 80px;
+        background: #ffd54f;
+        border-radius: 50%;
+        top: 30px;
+        right: 60px;
+        box-shadow: 0 0 40px #ffd54f;
+      }
+
+      .title {
+        position: absolute;
+        bottom: 8%;
+        left: 50%;
+        transform: translateX(-50%);
+        color: #333;
+        font-size: 1.6rem;
+        font-weight: bold;
+        font-family: "Arial Rounded MT Bold", sans-serif;
+        text-shadow: 2px 2px 4px rgba(255, 255, 255, 0.5);
+        opacity: 0;
+        animation: fadeIn 0.6s ease-in-out 1s forwards;
+      }
+
+      @keyframes planeEnter {
+        0% {
+          left: -150px;
+          transform: translateY(-50%);
+        }
+        100% {
+          left: 50%;
+          transform: translate(-50%, -50%);
+        }
+      }
+
+      @keyframes planeHover {
+        0%,
+        100% {
+          transform: translate(-50%, -50%);
+        }
+        50% {
+          transform: translate(-50%, -55%);
+        }
+      }
+
+      @keyframes planeExit {
+        0% {
+          left: 50%;
+          transform: translate(-50%, -50%);
+        }
+        100% {
+          left: calc(100% + 150px);
+          transform: translate(-50%, -50%);
+        }
+      }
+
+      @keyframes fadeIn {
+        from {
+          opacity: 0;
+        }
+        to {
+          opacity: 1;
+        }
+      }
+
+      @keyframes cloudMove {
+        from {
+          transform: translateX(0);
+        }
+        to {
+          transform: translateX(-100px);
+        }
+      }
+
+      /* 淡出动画 */
+      .fade-out {
+        animation: fadeOut 0.4s ease-in-out forwards;
+      }
+
+      @keyframes fadeOut {
+        from {
+          opacity: 1;
+        }
+        to {
+          opacity: 0;
+        }
+      }
+    </style>
+    <script type="module" crossorigin src="/travel-plan/assets/index-C9bZNooh.js"></script>
+    <link rel="stylesheet" crossorigin href="/travel-plan/assets/index-DVGB7QMN.css">
   </head>
 
   <body>
+    <!-- Splash 动画容器 -->
+    <div
+      id="splash"
+      class="splash-container"
+    >
+      <div class="scene">
+        <div class="sky"></div>
+        <div class="sun"></div>
+
+        <!-- 云朵将通过JS动态生成 -->
+        <div id="clouds-container"></div>
+
+        <div class="plane-container">
+          <img
+            src="/travel-plan/plane.svg"
+            alt="SVG Image"
+          />
+        </div>
+
+        <h1 class="title">旅行计划</h1>
+      </div>
+    </div>
+
     <div id="app"></div>
+
+    <script>
+      // 创建更美观的云朵
+      function createClouds() {
+        const container = document.getElementById("clouds-container");
+        const cloudCount = 8;
+
+        const cloudShapes = [
+          // 大云朵
+          {
+            w: 120,
+            h: 60,
+            parts: [
+              { x: 0, y: 20, r: 30 },
+              { x: 30, y: 10, r: 35 },
+              { x: 60, y: 15, r: 30 },
+              { x: 80, y: 25, r: 25 },
+            ],
+          },
+          // 中云朵
+          {
+            w: 80,
+            h: 40,
+            parts: [
+              { x: 0, y: 10, r: 15 },
+              { x: 20, y: 5, r: 20 },
+              { x: 40, y: 10, r: 15 },
+            ],
+          },
+          // 小云朵
+          {
+            w: 50,
+            h: 30,
+            parts: [
+              { x: 0, y: 10, r: 10 },
+              { x: 15, y: 5, r: 12 },
+              { x: 25, y: 10, r: 10 },
+            ],
+          },
+        ];
+
+        for (let i = 0; i < cloudCount; i++) {
+          const cloudType = cloudShapes[i % cloudShapes.length];
+          const cloud = document.createElement("div");
+          cloud.className = "cloud";
+          cloud.style.width = `${cloudType.w}px`;
+          cloud.style.height = `${cloudType.h}px`;
+
+          // 随机位置
+          const left = Math.random() * 100;
+          const top = 20 + Math.random() * 60;
+          cloud.style.left = `${left}%`;
+          cloud.style.top = `${top}%`;
+
+          // 随机动画
+          const duration = 30 + Math.random() * 30;
+          const delay = Math.random() * 10;
+          cloud.style.animation = `cloudMove ${duration}s linear ${delay}s infinite`;
+
+          // 创建云朵形状
+          cloud.innerHTML = `
+            <svg viewBox="0 0 ${cloudType.w} ${
+            cloudType.h
+          }" xmlns="http://www.w3.org/2000/svg">
+              ${cloudType.parts
+                .map(
+                  (part) =>
+                    `<circle cx="${part.x}" cy="${part.y}" r="${part.r}" fill="white" filter="url(#cloud-blur)"/>`
+                )
+                .join("")}
+              <filter id="cloud-blur">
+                <feGaussianBlur stdDeviation="3" />
+              </filter>
+            </svg>
+          `;
+
+          container.appendChild(cloud);
+        }
+      }
+
+      // 页面加载完成后显示splash动画
+      document.addEventListener("DOMContentLoaded", () => {
+        createClouds();
+
+        // 记录加载开始时间
+        const loadStartTime = Date.now();
+        const MIN_DISPLAY_TIME = 1000; // 最少显示1秒
+
+        // 监听app加载完成
+        function checkAppLoaded() {
+          return new Promise((resolve) => {
+            if (document.getElementById("app").children.length > 0) {
+              const elapsed = Date.now() - loadStartTime;
+              const remainingTime = Math.max(0, MIN_DISPLAY_TIME - elapsed);
+              setTimeout(resolve, remainingTime);
+            } else {
+              const observer = new MutationObserver(() => {
+                if (document.getElementById("app").children.length > 0) {
+                  observer.disconnect();
+                  const elapsed = Date.now() - loadStartTime;
+                  const remainingTime = Math.max(0, MIN_DISPLAY_TIME - elapsed);
+                  setTimeout(resolve, remainingTime);
+                }
+              });
+              observer.observe(document.getElementById("app"), {
+                childList: true,
+                subtree: true,
+              });
+            }
+          });
+        }
+
+        checkAppLoaded().then(() => {
+          const plane = document.querySelector(".plane-container");
+          plane.style.animation = "planeExit 1s ease-in forwards";
+
+          const splash = document.getElementById("splash");
+          splash.classList.add("fade-out");
+
+          splash.addEventListener("animationend", () => {
+            splash.remove();
+          });
+        });
+      });
+    </script>
   </body>
 </html>
