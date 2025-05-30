@@ -110,7 +110,7 @@ const submitTravel = async () => {
     createdAt: Date.now(), // 更新创建时间为当前时间（或可以保留原始时间）
   };
   await store.updateTravel(travelData);
-  router.replace({ name: "Travel" });
+  router.back();
 };
 </script>
 

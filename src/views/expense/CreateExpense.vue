@@ -88,7 +88,7 @@ const resetForm = () => {
 };
 
 const back = () => {
-  router.push({ name: "Travel" });
+  router.back();
 };
 
 // 常用标签

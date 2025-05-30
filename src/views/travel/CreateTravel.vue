@@ -75,7 +75,7 @@ const submitTravel = () => {
     createdAt: Date.now(),
   };
   store.createTravel(travel);
-  router.replace({ name: "Travel" });
+  router.back();
 };
 </script>
 

@@ -86,7 +86,7 @@ const onSubmit = async () => {
 };
 
 const back = () => {
-  router.push({ name: "Travel" });
+  router.back();
 };
 
 // 预定义的分类选项

@@ -78,7 +78,7 @@ const onSubmit = async () => {
 };
 
 const back = () => {
-  router.push({ name: "Travel" });
+  router.back();
 };
 
 onActivated(async () => {

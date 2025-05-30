@@ -36,8 +36,6 @@ const travelOptions = computed(() => {
 });
 
 const onClickAdd = () => {
-  console.log(activeTabName.value);
-
   switch (activeTabName.value) {
     case "plan":
       router.push({ name: "CreatePlan" });
@@ -57,8 +55,6 @@ const onClickAdd = () => {
   }
 };
 const onSelectTravel = (value: any) => {
-  console.log(value);
-
   const newTravel = store.travels?.find(
     (travel) => travel.travelId === value.selectedValues[0]
   );

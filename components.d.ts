@@ -21,6 +21,7 @@ declare module 'vue' {
     PlanPositionSelect: typeof import('./src/components/map/PlanPositionSelect.vue')['default']
     PlanStatistics: typeof import('./src/components/travelStats/PlanStatistics.vue')['default']
     PrioritySelector: typeof import('./src/components/PrioritySelector.vue')['default']
+    RoadMap: typeof import('./src/components/map/RoadMap.vue')['default']
     RouterLink: typeof import('vue-router')['RouterLink']
     RouterView: typeof import('vue-router')['RouterView']
     TravelBasicInfo: typeof import('./src/components/travelStats/TravelBasicInfo.vue')['default']

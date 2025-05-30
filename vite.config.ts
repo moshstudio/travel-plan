@@ -9,43 +9,48 @@ import { VantResolver } from "unplugin-vue-components/resolvers";
 const host = process.env.TAURI_DEV_HOST;
 
 // https://vitejs.dev/config/
-export default defineConfig(async () => ({
-  plugins: [
-    vue(),
-    tailwindcss(),
-    AutoImport({
-      resolvers: [VantResolver()],
-    }),
-    Components({
-      resolvers: [VantResolver()],
-    }),
-  ],
+export default defineConfig(async () => {
+  const isDeploy = process.env.npm_lifecycle_event === "deploy";
+  console.log("is deploy:", isDeploy);
 
-  // Vite options tailored for Tauri development and only applied in `tauri dev` or `tauri build`
-  //
-  // 1. prevent vite from obscuring rust errors
-  clearScreen: false,
-  // 2. tauri expects a fixed port, fail if that port is not available
-  server: {
-    port: 1420,
-    strictPort: true,
-    host: host || false,
-    hmr: host
-      ? {
-          protocol: "ws",
-          host,
-          port: 1421,
-        }
-      : undefined,
-    watch: {
-      // 3. tell vite to ignore watching `src-tauri`
-      ignored: ["**/src-tauri/**"],
+  return {
+    plugins: [
+      vue(),
+      tailwindcss(),
+      AutoImport({
+        resolvers: [VantResolver()],
+      }),
+      Components({
+        resolvers: [VantResolver()],
+      }),
+    ],
+
+    // Vite options tailored for Tauri development and only applied in `tauri dev` or `tauri build`
+    //
+    // 1. prevent vite from obscuring rust errors
+    clearScreen: false,
+    // 2. tauri expects a fixed port, fail if that port is not available
+    server: {
+      port: 1420,
+      strictPort: true,
+      host: host || false,
+      hmr: host
+        ? {
+            protocol: "ws",
+            host,
+            port: 1421,
+          }
+        : undefined,
+      watch: {
+        // 3. tell vite to ignore watching `src-tauri`
+        ignored: ["**/src-tauri/**"],
+      },
     },
-  },
-  resolve: {
-    alias: {
-      "@": path.resolve(__dirname, "./src"),
+    resolve: {
+      alias: {
+        "@": path.resolve(__dirname, "./src"),
+      },
     },
-  },
-  base: "/travel-plan", // 替换为你的仓库名
-}));
+    base: isDeploy ? "/travel-plan/" : "/", // 替换为你的仓库名
+  };
+});

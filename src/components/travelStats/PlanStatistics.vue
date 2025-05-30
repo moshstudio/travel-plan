@@ -123,7 +123,14 @@ const toggleMapExpand = () => {
 
 <template>
   <div class="p-4">
-    <h2 class="text-2xl font-bold text-gray-900 mb-6">旅行计划统计</h2>
+    <h2 class="text-2xl font-bold text-gray-900 mb-2">旅行计划统计</h2>
+
+    <button
+      @click="$router.push({ name: 'RoadMap' })"
+      class="px-2 py-1 bg-blue-500 hover:bg-blue-600 rounded-md transition-colors mb-4"
+    >
+      <span class="text-white text-sm">查看路线图</span>
+    </button>
 
     <!-- 状态统计卡片 -->
     <div class="mb-6">

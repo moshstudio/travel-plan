@@ -110,7 +110,7 @@ const onSubmit = async () => {
 
     await store.updateTravelExpense(toRaw(expenseData));
     showSuccessToast("花费记录更新成功");
-    router.push({ name: "Travel" });
+    back();
   } catch (error) {
     showFailToast("更新花费记录失败");
     console.error(error);
@@ -118,7 +118,7 @@ const onSubmit = async () => {
 };
 
 const back = () => {
-  router.push({ name: "Travel" });
+  router.back();
 };
 
 // 常用标签

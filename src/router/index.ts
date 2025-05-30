@@ -89,6 +89,17 @@ const routes: RouteRecordRaw[] = [
       },
     ],
   },
+  {
+    path: "/stats",
+    redirect: { name: "Travel" },
+    children: [
+      {
+        path: "road-map",
+        name: "RoadMap",
+        component: () => import("@/components/map/RoadMap.vue"),
+      },
+    ],
+  },
 ];
 
 // const routes = [

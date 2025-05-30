@@ -10,7 +10,7 @@ import { TravelPlanStatus, TravelPlanType } from "@/data/TravelPlan";
 import Placemark from "ol-ext/overlay/Placemark";
 import Popup from "ol-ext/overlay/Popup";
 import _ from "lodash";
-import { format } from "date-fns";
+import { format as fnsFormat } from "date-fns";
 import { XYZ } from "ol/source";
 import { tdtXYZPoxyCVAUrl, tdtXYZPoxyVECUrl } from "@/api/tdt";
 
@@ -61,8 +61,17 @@ const tagIcons: Record<string, string> = {
   签证服务: "fa fa-book",
 };
 
-const formatDateTime = (timestamp: number): string => {
-  return format(new Date(timestamp), "yyyy/MM/dd HH:mm");
+const formatDateTime = (timestamp: number, format = "MM/dd HH:mm"): string => {
+  const date = new Date(timestamp);
+
+  if (date.getMinutes() === 0) {
+    if (date.getHours() === 0) {
+      format = format.replace(" HH:mm", "日").replace("/", "月");
+    } else {
+      format = format.replace(":mm", "点");
+    }
+  }
+  return fnsFormat(new Date(timestamp), format);
 };
 
 const mapInit = async () => {

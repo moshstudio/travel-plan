@@ -17,10 +17,9 @@ import router from "@/router";
 
 export const useStore = defineStore("store", () => {
   const nowRef = useNow({ interval: 1000 });
-  
+
   const planSelectAddress = ref<AddressType>();
   const expenseSelectAddress = ref<AddressType>();
-  
 
   /**旅行 */
   const currentTravel = useObservable<TravelType | undefined>(
@@ -367,6 +366,9 @@ export const useStore = defineStore("store", () => {
       } else {
         router.push({ name: "CreateExpense" });
       }
+    });
+    addBackCallback("RoadMap", async () => {
+      router.push({ name: "Travel" });
     });
 
     window.androidBackCallback = async () => {
