@@ -7,15 +7,9 @@
     >
       <template #right>
         <van-icon
-          :name="showPopups ? 'eye-o' : 'closed-eye'"
+          name="share"
           size="18"
-          @click="togglePopups"
-          class="mr-2"
-        />
-        <van-icon
-          name="replay"
-          size="18"
-          @click="refreshMap"
+          @click="showToast('分享功能未实现')"
           class="mr-2"
         />
       </template>
@@ -24,8 +18,10 @@
     <div
       class="absolute z-10 top-12 left-0 right-0 flex justify-center pointer-events-none"
     >
+      <!-- Summary Toggle -->
       <div
-        class="bg-white bg-opacity-90 px-3 py-2 rounded-b-lg shadow-md flex items-center"
+        class="bg-white bg-opacity-90 px-3 py-2 rounded-b-lg shadow-md flex items-center pointer-events-auto cursor-pointer hover:bg-opacity-100 transition"
+        @click="showPlanList = !showPlanList"
       >
         <van-loading
           v-if="loading"
@@ -33,10 +29,72 @@
           size="20px"
           class="mr-2"
         />
-        <span class="text-sm text-gray-700">
-          {{ travelSummary }}
-        </span>
+        <span class="text-sm text-gray-700">{{ travelSummary }}</span>
+        <van-icon
+          :name="showPlanList ? 'arrow-up' : 'arrow-down'"
+          class="ml-2 text-gray-500"
+        />
       </div>
+
+      <!-- Plan List -->
+      <transition
+        enter-active-class="transition-all duration-300 ease-out"
+        enter-from-class="opacity-0 -translate-y-2"
+        enter-to-class="opacity-100 translate-y-0"
+        leave-active-class="transition-all duration-200 ease-in"
+        leave-from-class="opacity-100 translate-y-0"
+        leave-to-class="opacity-0 -translate-y-2"
+      >
+        <div
+          v-if="showPlanList"
+          class="absolute top-full left-0 right-0 mx-4 mt-1 bg-white rounded-b-lg shadow-lg overflow-hidden pointer-events-auto"
+        >
+          <div
+            class="max-h-[60vh] overflow-y-auto thin-scrollbar divide-y divide-gray-100"
+          >
+            <div
+              v-for="plan in sortedPlans"
+              :key="plan.id"
+              class="relative px-4 py-3 active:bg-gray-50 transition-colors cursor-pointer border-l-4"
+              :style="{ borderLeftColor: getStatusColor(plan.status) }"
+              @click="handlePlanClick(plan)"
+            >
+              <!-- Priority dot -->
+              <div
+                class="absolute top-3 right-3 w-2 h-2 rounded-full"
+                :style="{ backgroundColor: getPriorityColor(plan.priority) }"
+              ></div>
+
+              <div class="flex justify-between items-start gap-2 pr-4">
+                <h4 class="text-sm font-medium text-gray-900 truncate">
+                  {{ plan.title }}
+                </h4>
+              </div>
+
+              <div class="flex items-center mt-1 text-xs text-gray-500">
+                <van-icon
+                  name="clock-o"
+                  class="mr-1 text-gray-400"
+                />
+                <span
+                  >{{ formatDateTime(plan.startDateTime) }}-{{
+                    formatDateTime(plan.endDateTime)
+                  }}</span
+                >
+              </div>
+
+              <div class="flex items-center mt-1 gap-2">
+                <span
+                  v-if="plan.tags?.length"
+                  class="text-xs px-1.5 py-0.5 bg-gray-100 rounded"
+                >
+                  {{ plan.tags[0] }}
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </transition>
     </div>
 
     <div
@@ -78,17 +136,34 @@
         </div>
       </div>
     </div>
+    <!-- 控制栏 -->
+    <div
+      class="absolute left-1 bottom-1 p-1 bg-white shadow rounded flex flex-col gap-3 z-11 -space-y-px"
+    >
+      <van-icon
+        name="replay"
+        size="18"
+        @click="refreshMap"
+        class="van-haptics-feedback pb-1 border-b border-gray-300"
+      />
+      <van-icon
+        :name="showPopups ? 'eye' : 'eye-o'"
+        size="18"
+        @click="togglePopups"
+        class="van-haptics-feedback pb-1 border-b border-gray-300"
+      />
+      <van-icon
+        :name="showLegend ? 'info' : 'info-o'"
+        size="18"
+        @click="toggleLegend"
+        class="van-haptics-feedback"
+      />
+    </div>
 
     <!-- 图例 -->
-    <van-icon
-      name="info"
-      size="18"
-      @click="toggleLegend"
-      class="absolute left-2 bottom-10"
-    />
     <div
       v-if="showLegend"
-      class="absolute z-10 bottom-4 left-0 right-0 flex justify-center transition-all duration-300 pointer-events-none"
+      class="absolute z-10 bottom-1 left-0 right-0 flex justify-center transition-all duration-300 pointer-events-none"
     >
       <div
         class="grid grid-cols-3 max-w-[90vw] gap-[8px] bg-white bg-opacity-90 px-3 py-2 rounded-lg shadow-md"
@@ -120,7 +195,7 @@ import View from "ol/View";
 import TileLayer from "ol/layer/Tile";
 import VectorLayer from "ol/layer/Vector";
 import VectorSource from "ol/source/Vector";
-import { Icon, Style, Text, Fill, Stroke, Circle } from "ol/style";
+import { Icon, Style, Stroke } from "ol/style";
 import Feature from "ol/Feature";
 import { LineString, Point } from "ol/geom";
 import Placemark from "ol-ext/overlay/Placemark";
@@ -135,14 +210,19 @@ import Popup from "ol-ext/overlay/Popup";
 import { getVectorContext } from "ol/render";
 import { StyleLike } from "ol/style/Style";
 import RenderEvent from "ol/render/Event";
-import { MapRenderEventTypes } from "ol/render/EventType";
-import BaseEvent from "ol/events/Event";
-import { showFailToast } from "vant";
+import { showFailToast, showToast } from "vant";
+import { Icon as VanIcon, Button as VanButton } from "vant";
+import { nanoid } from "nanoid";
 
 const store = useStore();
 const { travelPlansFromToday } = storeToRefs(store);
+
+// 按开始时间排序的行程计划
+const sortedPlans = ref<TravelPlanType[]>([]);
+
 const showPopups = ref(true);
 const showLegend = ref(false);
+const showPlanList = ref(false);
 const loading = ref(true);
 const selectedRoute = ref<{
   startAddress: string;
@@ -150,6 +230,23 @@ const selectedRoute = ref<{
   distance: string;
   time: string;
 } | null>(null);
+const mapContainer = ref<HTMLElement | null>(null);
+let map: Map | null = null;
+let lineLayer: VectorLayer<VectorSource> | null = null;
+const placemarks: Placemark[] = [];
+const popups: Popup[] = [];
+let detailPopup: Popup | null = null;
+const arrowAnime = ref(true);
+let routeUniqId = 0;
+
+const loadSortedPlans = () => {
+  if (!travelPlansFromToday.value) {
+    sortedPlans.value = [];
+  }
+  sortedPlans.value = _.cloneDeep(travelPlansFromToday.value).sort(
+    (a, b) => a.startDateTime - b.startDateTime
+  );
+};
 
 // 计算旅行摘要信息
 const travelSummary = computed(() => {
@@ -165,6 +262,19 @@ const travelSummary = computed(() => {
   }月${endDate.getDate()}日 | ${sortedPlans.value.length}个地点`;
 });
 
+const handlePlanClick = (plan: TravelPlanType) => {
+  placemarks.forEach((placemark) => {
+    if (placemark.get("travelPlanId") === plan.travelPlanId) {
+      map?.setView(
+        new View({
+          center: placemark.getPosition(),
+          zoom: 14,
+        })
+      );
+    }
+  });
+};
+
 // 生成图例项
 const legendItems = computed(() => {
   return [
@@ -176,18 +286,6 @@ const legendItems = computed(() => {
     { color: "oklch(70.7% 0.022 261.325)", label: "已取消" },
   ];
 });
-
-// 按开始时间排序的行程计划
-const sortedPlans = ref<TravelPlanType[]>([]);
-
-const loadSortedPlans = () => {
-  if (!travelPlansFromToday.value) {
-    sortedPlans.value = [];
-  }
-  sortedPlans.value = _.cloneDeep(travelPlansFromToday.value).sort(
-    (a, b) => a.startDateTime - b.startDateTime
-  );
-};
 
 const getColorForDate = (timestamp: number): string => {
   const date = new Date(timestamp);
@@ -234,6 +332,18 @@ const getStatusColor = (status: TravelPlanStatus): string => {
       return "#94a3b8";
   }
 };
+const getStatusText = (status: TravelPlanStatus): string => {
+  const statusMap: Record<string, string> = {
+    planned: "计划中",
+    upcoming: "即将开始",
+    inProgress: "进行中",
+    completed: "已完成",
+    expired: "已结束",
+    cancelled: "已取消",
+    deleted: "已删除",
+  };
+  return statusMap[status] || "";
+};
 
 const formatDateTime = (timestamp: number, format = "MM/dd HH:mm"): string => {
   const date = new Date(timestamp);
@@ -246,14 +356,6 @@ const formatDateTime = (timestamp: number, format = "MM/dd HH:mm"): string => {
     }
   }
   return fnsFormat(new Date(timestamp), format);
-};
-
-const getAddressByLngLat = (lng: number, lat: number) => {
-  return sortedPlans.value.find(
-    (plan) =>
-      plan.location.coordinates.lng === lng &&
-      plan.location.coordinates.lat === lat
-  )?.location.name;
 };
 
 // 计算两点间距离(公里)
@@ -278,14 +380,6 @@ const calculateDistance = (
 
   return distance.toFixed(1);
 };
-
-const mapContainer = ref<HTMLElement | null>(null);
-let map: Map | null = null;
-let lineLayer: VectorLayer<VectorSource> | null = null;
-const placemarks: Placemark[] = [];
-const popups: Popup[] = [];
-const arrowAnime = ref(true);
-let routeUniqId = 0;
 
 const initMap = async () => {
   if (!mapContainer.value) return;
@@ -318,6 +412,9 @@ const initMap = async () => {
       source: new VectorSource(),
     });
     map.addLayer(lineLayer);
+    map.addEventListener("click", (event) => {
+      showPlanList.value = false;
+    });
     updateMap();
   } catch (error) {
     console.error("地图初始化失败:", error);
@@ -326,50 +423,78 @@ const initMap = async () => {
   }
 };
 
-const renderPopupHtml = (plan: TravelPlanType) => {
+const renderDetailPopupHtml = (plan: TravelPlanType) => {
   const priorityColor = getPriorityColor(plan.priority);
-  const vnode = h(
-    "div",
-    {
-      class: "flex flex-col items-center justify-start text-sm p-0",
-      style: { color: "black" },
-    },
-    [
-      h(
-        "div",
-        {
-          class: `font-bold text-xs flex w-full`,
-          style: {
-            color: priorityColor,
-          },
-        },
-        plan.title
-      ),
-      h(
-        "div",
-        {
-          class: "text-xs",
-          style: {
-            color: "grey",
-          },
-        },
-        formatDateTime(plan.startDateTime)
-      ),
-      h(
-        "div",
-        {
-          class: "text-xs",
-          style: {
-            color: "grey",
-          },
-        },
-        formatDateTime(plan.endDateTime)
-      ),
-    ]
-  );
-
+  const statusText = getStatusText(plan.status);
+  const statusColor = getStatusColor(plan.status);
+  const timeDisplay = `${formatDateTime(plan.startDateTime)} - ${formatDateTime(
+    plan.endDateTime
+  )}`;
   const container = document.createElement("div");
-  render(vnode, container);
+  render(
+    h("div", { class: "bg-white rounded-lg shadow p-3 w-64 text-sm" }, [
+      h("div", { class: "flex justify-between items-center mb-2" }, [
+        h(
+          "h3",
+          {
+            class: "font-bold truncate",
+            style: { color: priorityColor },
+            title: plan.title,
+          },
+          plan.title
+        ),
+        h("div", { class: "flex items-center gap-1" }, [
+          h(
+            "span",
+            {
+              class: "text-xs px-2 py-0.5 rounded-full",
+              style: {
+                color: statusColor,
+              },
+            },
+            statusText
+          ),
+          h(VanIcon, {
+            name: "close",
+            class: "detail-popup-close cursor-pointer",
+          }),
+        ]),
+      ]),
+      h("div", { class: "space-y-1 mb-2 text-gray-600" }, [
+        h("div", { class: "flex items-center" }, [
+          h("span", { class: "mr-2 text-xs" }, "🕒"),
+          h("span", timeDisplay),
+        ]),
+        plan.location?.address &&
+          h("div", { class: "flex items-center" }, [
+            h("span", { class: "mr-2 text-xs" }, "📍"),
+            h("span", plan.location.address),
+          ]),
+      ]),
+      plan.description &&
+        h("p", { class: "mb-2 text-gray-700" }, plan.description),
+      (plan.tags?.length || 0) > 0 &&
+        h(
+          "div",
+          { class: "flex flex-wrap gap-1 mb-2" },
+          plan.tags!.map((tag) =>
+            h(
+              "span",
+              {
+                class: "bg-gray-100 text-gray-700 text-xs px-2 py-0.5 rounded",
+              },
+              tag
+            )
+          )
+        ),
+    ]),
+    container
+  );
+  // document
+  //   .querySelector("." + closeButtonClass)
+  //   ?.addEventListener("click", () => {
+  //     console.log("关闭详情弹窗");
+  //   });
   return container.innerHTML;
 };
 
@@ -414,7 +539,10 @@ const updateMap = async () => {
     const lineString = new LineString(lineCoords);
 
     const startPlan = sortedPlans.value[i];
-    const dateColor = getColorForDate(startPlan.startDateTime);
+    const endPlan = sortedPlans.value[i + 1];
+    const dateColor = getColorForDate(
+      endPlan.startDateTime ?? startPlan.startDateTime
+    );
 
     // 定义样式
     const upperPathStyle = new Style({
@@ -497,7 +625,6 @@ const updateMap = async () => {
                 rotation: -rotation,
                 width: arrowCanvas.width,
                 height: arrowCanvas.height,
-                // imgSize: [arrowCanvas.width, arrowCanvas.height],
               }),
             });
             if (vectorContext) {
@@ -543,7 +670,6 @@ const updateMap = async () => {
         });
       }
       lineFeatures.push(feature);
-      // layer.getSource()!.addFeature(feature);
       return feature;
     };
     drawVectorFeature(lineLayer, {
@@ -620,43 +746,6 @@ const updateMap = async () => {
     }
   });
 
-  // 创建标记点
-  sortedPlans.value.forEach((plan, index) => {
-    const coord = coordinates[index];
-    const nthIndex = coordinates
-      .slice(0, index + 1)
-      .filter((x) => x[0] === coord[0] && x[1] === coord[1]).length;
-
-    const placemark = new Placemark({
-      color: getStatusColor(plan.status),
-    });
-    map?.addOverlay(placemark);
-    placemarks.push(placemark);
-    placemark.setClassName("my-placemark z-[10]");
-    placemark.getElement()?.classList.add("scale-[0.8]");
-    placemark.setPosition(fromLonLat(coord));
-    placemark.setOffset([
-      Math.pow(-1, nthIndex) * (nthIndex - 1) * 10,
-      Math.pow(-1, nthIndex) * -(nthIndex - 1) * 10,
-    ]);
-    placemark.show(
-      fromLonLat(coord),
-      `<div class="flex items-center justify-center text-black">${
-        index + 1
-      }</div>`
-    );
-    placemark.getElement()?.addEventListener("click", () => {
-      if (popups[index]) {
-        if (popups[index].getPosition()) {
-          popups[index].setPosition(undefined);
-          popups[index].hide();
-        } else {
-          popups[index].setPosition(placemarks[index].getPosition());
-        }
-      }
-    });
-  });
-
   sortedPlans.value.forEach((plan, index) => {
     const coord = coordinates[index];
     const nthIndex = coordinates
@@ -676,14 +765,89 @@ const updateMap = async () => {
     });
     map?.addOverlay(popup);
     popups.push(popup);
-    popup.setPopupClass(`my-popup z-[20] bg-white/70 shadow-lg p-1`);
-    popup.setPositioning("top-left");
+    popup.setPopupClass(`my-popup z-[20] p-0 pointer-event-none`); //bg-white/70 shadow-lg
+    popup.set("travelPlanId", plan.travelPlanId);
+    popup.setPositioning("top-center");
     popup.setOffset([
       Math.pow(-1, nthIndex) * (nthIndex - 1) * 10,
       Math.pow(-1, nthIndex) * -(nthIndex - 1) * 10,
     ]);
-    popup.show(placemarks[index].getPosition()!, renderPopupHtml(plan));
   });
+
+  // 创建标记点
+  sortedPlans.value.forEach((plan, index) => {
+    const coord = coordinates[index];
+    const nthIndex = coordinates
+      .slice(0, index + 1)
+      .filter((x) => x[0] === coord[0] && x[1] === coord[1]).length;
+
+    const placemark = new Placemark({
+      color: getStatusColor(plan.status),
+    });
+    map?.addOverlay(placemark);
+    placemarks.push(placemark);
+    placemark.set("travelPlanId", plan.travelPlanId);
+    placemark.setClassName("z-[10] pointer-events-none");
+    placemark.getElement()?.classList.add("my-placemark");
+    placemark.getElement()?.classList.add("scale-[0.8]");
+    placemark.getElement()?.classList.add("round-[99999]");
+    placemark.getElement()?.classList.add("pointer-events-auto");
+    placemark.setPosition(fromLonLat(coord));
+    placemark.setOffset([
+      Math.pow(-1, nthIndex) * (nthIndex - 1) * 12,
+      Math.pow(-1, nthIndex) * -(nthIndex - 1) * 10,
+    ]);
+    placemark.show(
+      fromLonLat(coord),
+      `<div class="flex items-center justify-center text-black pointer-events-none cursor-pointer">${
+        index + 1
+      }</div>`
+    );
+    placemark.getElement()?.addEventListener("click", () => {
+      const planId = placemark.get("travelPlanId");
+      const plan = sortedPlans.value.find((x) => x.travelPlanId === planId);
+      if (!plan) return;
+      detailPopup?.setPosition(placemarks[index].getPosition());
+      detailPopup?.show(
+        placemarks[index].getPosition(),
+        renderDetailPopupHtml(plan)
+      );
+      const closeButton = document.querySelector(".detail-popup-close");
+      closeButton?.addEventListener("click", () => {
+        detailPopup?.hide();
+        detailPopup?.setPosition(undefined);
+      });
+    });
+  });
+
+  // 显示popup
+  popups.forEach((popup, index) => {
+    const planId = popup.get("travelPlanId");
+    const plan = sortedPlans.value.find((x) => x.travelPlanId === planId);
+    if (!plan) return;
+    const c = tinyColor(getPriorityColor(plan.priority)).darken(20).toHex();
+    popup.show(
+      placemarks[index].getPosition()!,
+      `<div class="font-bold text-xs pointer-events-none" style="color: #${c}">${plan.title}</div>`
+    );
+  });
+
+  if (!detailPopup) {
+    detailPopup = new Popup({
+      popupClass: "default",
+      closeBox: false,
+      onclose: () => {
+        map?.getTargetElement().focus();
+      },
+      autoPan: {
+        animation: {
+          duration: 500,
+        },
+      },
+    });
+    map?.addOverlay(detailPopup);
+    detailPopup.setPopupClass(`my-detail-popup z-[30] p-0`);
+  }
 
   const extension = lineLayer.getSource()?.getExtent();
   if (extension) {
@@ -782,7 +946,6 @@ onActivated(() => {
   justify-content: center;
 }
 :deep(.my-popup) {
-  pointer-events: none;
   div {
     display: flex;
     flex-direction: column;
@@ -790,5 +953,8 @@ onActivated(() => {
 }
 :deep(.my-placemark) {
   cursor: pointer;
+}
+:deep(.ol-popup.placemark) {
+  pointer-events: none;
 }
 </style>
