@@ -1,498 +1,3 @@
-<!-- <template>
-  <div class="relative w-screen h-screen flex flex-col">
-    <van-nav-bar
-      title="路线图"
-      left-arrow
-      @click-left="$router.back()"
-    >
-      <template #right>
-        <van-icon
-          :name="showPopups ? 'eye-o' : 'closed-eye'"
-          size="18"
-          @click="togglePopups"
-          class="mr-2"
-        />
-        <van-icon
-          name="replay"
-          size="18"
-          @click="refreshMap"
-        />
-      </template>
-    </van-nav-bar>
-
-    <div class="absolute z-10 top-12 left-0 right-0 flex justify-center">
-      <div
-        class="bg-white bg-opacity-90 px-3 py-2 rounded-b-lg shadow-md flex items-center"
-      >
-        <van-loading
-          v-if="loading"
-          type="spinner"
-          size="20px"
-          class="mr-2"
-        />
-        <span class="text-sm text-gray-700">
-          {{ travelSummary }}
-        </span>
-      </div>
-    </div>
-
-    <div
-      ref="mapContainer"
-      class="travel-map w-full h-full"
-    ></div>
-
-    <div class="absolute z-10 bottom-4 left-0 right-0 flex justify-center">
-      <div
-        class="grid grid-cols-3 max-w-[90vw] gap-[8px] bg-white bg-opacity-90 px-3 py-2 rounded-lg shadow-md"
-      >
-        <div
-          class="flex items-center mb-1"
-          v-for="(item, index) in legendItems"
-          :key="index"
-        >
-          <div
-            class="w-4 h-4 rounded-full mr-2"
-            :style="{ backgroundColor: item.color }"
-          ></div>
-          <span class="text-xs">{{ item.label }}</span>
-        </div>
-      </div>
-    </div>
-  </div>
-</template>
-
-<script setup lang="ts">
-import { ref, onMounted, watch, computed, onActivated, h, render } from "vue";
-import _ from "lodash";
-import { storeToRefs } from "pinia";
-import { format as fnsFormat } from "date-fns";
-import Map from "ol/Map";
-import View from "ol/View";
-import TileLayer from "ol/layer/Tile";
-import VectorLayer from "ol/layer/Vector";
-import VectorSource from "ol/source/Vector";
-import { Icon, Style, Text, Fill, Stroke, Circle } from "ol/style";
-import Feature from "ol/Feature";
-import { LineString, Point } from "ol/geom";
-import Placemark from "ol-ext/overlay/Placemark";
-import { fromLonLat, toLonLat } from "ol/proj";
-import { useStore } from "@/store";
-import { TravelPlanStatus, TravelPlanType } from "@/data/TravelPlan";
-import { XYZ } from "ol/source";
-import { tdtXYZPoxyCVAUrl, tdtXYZPoxyVECUrl } from "@/api/tdt";
-import { sleep } from "@/utils";
-import Popup from "ol-ext/overlay/Popup";
-import RouteArrow from "@/assets/images/route-arrow.png";
-
-const store = useStore();
-const { travelPlansFromToday } = storeToRefs(store);
-const showPopups = ref(true);
-const loading = ref(true);
-
-// 计算旅行摘要信息
-const travelSummary = computed(() => {
-  if (sortedPlans.value.length === 0) return "暂无行程计划";
-
-  const startDate = new Date(sortedPlans.value[0].startDateTime);
-  const endDate = new Date(
-    sortedPlans.value[sortedPlans.value.length - 1].endDateTime
-  );
-
-  return `行程: ${startDate.getMonth() + 1}月${startDate.getDate()}日 - ${
-    endDate.getMonth() + 1
-  }月${endDate.getDate()}日 | ${sortedPlans.value.length}个地点`;
-});
-
-// 生成图例项
-const legendItems = computed(() => {
-  return [
-    { color: "oklch(70.7% 0.022 261.325)", label: "未开始" },
-    { color: "oklch(85.2% 0.199 91.936)", label: "即将开始" },
-    { color: "oklch(79.2% 0.209 151.711)", label: "进行中" },
-    { color: "oklch(70.4% 0.191 22.216)", label: "已结束" },
-    { color: "oklch(70.7% 0.165 254.624)", label: "已完成" },
-    { color: "oklch(70.7% 0.022 261.325)", label: "已取消" },
-  ];
-});
-
-// 按开始时间排序的行程计划
-const sortedPlans = ref<TravelPlanType[]>([]);
-
-const loadSortedPlans = () => {
-  if (!travelPlansFromToday.value) {
-    sortedPlans.value = [];
-  }
-  sortedPlans.value = _.cloneDeep(travelPlansFromToday.value).sort(
-    (a, b) => a.startDateTime - b.startDateTime
-  );
-};
-
-const getColorForDate = (timestamp: number): string => {
-  const date = new Date(timestamp);
-  const day = date.getDate();
-  const month = date.getMonth();
-  const year = date.getFullYear();
-
-  // 使用更复杂的哈希算法确保颜色分布均匀
-  const hash = day + month * 31 + year * 365;
-
-  // 使用黄金角分割法(137.5度)确保颜色差异最大化
-  const hue = (hash * 137.5) % 360;
-
-  // 莫兰迪色系参数 - 较低饱和度，较高亮度
-  const saturation = 40 + (hash % 20); // 40-60% 饱和度
-  const lightness = 65 + (hash % 10); // 65-75% 亮度
-
-  return `hsl(${hue}, ${saturation}%, ${lightness}%)`;
-};
-
-// 获取优先级颜色
-const getPriorityColor = (priority: "low" | "medium" | "high"): string => {
-  switch (priority) {
-    case "high":
-      return "#f87171"; // 红色
-    case "medium":
-      return "#fbbf24"; // 黄色
-    case "low":
-      return "#4ade80"; // 绿色
-    default:
-      return "#94a3b8"; // 默认灰色
-  }
-};
-
-// 获取状态颜色
-const getStatusColor = (status: TravelPlanStatus): string => {
-  switch (status) {
-    case "planned":
-      return "oklch(70.7% 0.022 261.325)";
-    case "upcoming":
-      return "oklch(85.2% 0.199 91.936)";
-    case "in-progress":
-      return "oklch(79.2% 0.209 151.711)";
-    case "expired":
-      return "oklch(70.4% 0.191 22.216)";
-    case "cancelled":
-      return "oklch(70.7% 0.022 261.325)";
-    case "completed":
-      return "oklch(70.7% 0.165 254.624)";
-    default:
-      return "#94a3b8"; // 默认灰色
-  }
-};
-
-// 格式化日期时间
-const formatDateTime = (timestamp: number, format = "MM-dd HH:mm"): string => {
-  return fnsFormat(new Date(timestamp), format);
-};
-
-const mapContainer = ref<HTMLElement | null>(null);
-let map: Map | null = null;
-let lineLayer: VectorLayer<VectorSource> | null = null;
-const placemarks: Placemark[] = [];
-const popups: Popup[] = [];
-
-// 初始化地图
-const initMap = async () => {
-  if (!mapContainer.value) return;
-  loading.value = true;
-
-  try {
-    // 创建地图
-    map = new Map({
-      target: mapContainer.value,
-      layers: [
-        new TileLayer({
-          source: new XYZ({
-            url: await tdtXYZPoxyVECUrl(),
-            maxZoom: 17,
-          }),
-        }),
-        new TileLayer({
-          source: new XYZ({
-            url: await tdtXYZPoxyCVAUrl(),
-            maxZoom: 17,
-          }),
-        }),
-      ],
-      view: new View({
-        center: fromLonLat([116.404, 39.915]), // 默认北京中心
-        zoom: 12,
-      }),
-    });
-
-    // 创建路线层
-    lineLayer = new VectorLayer({
-      source: new VectorSource(),
-    });
-    map.addLayer(lineLayer);
-    updateMap();
-  } catch (error) {
-    console.error("地图初始化失败:", error);
-  } finally {
-    loading.value = false;
-  }
-};
-
-const renderPopupHtml = (plan: TravelPlanType) => {
-  const priorityColor = getPriorityColor(plan.priority);
-  const vnode = h(
-    "div",
-    {
-      class: "flex flex-col items-center justify-start text-sm p-0",
-      style: { color: "black" },
-    },
-    [
-      h(
-        "div",
-        {
-          class: `font-bold text-xs flex w-full`,
-          style: {
-            color: priorityColor,
-          },
-        },
-        plan.title
-      ),
-      h(
-        "div",
-        {
-          class: "text-xs",
-          style: {
-            color: "grey",
-          },
-        },
-        formatDateTime(plan.startDateTime)
-      ),
-      h(
-        "div",
-        {
-          class: "text-xs",
-          style: {
-            color: "grey",
-          },
-        },
-        formatDateTime(plan.endDateTime)
-      ),
-    ]
-  );
-
-  const container = document.createElement("div");
-  render(vnode, container);
-  return container.innerHTML;
-};
-
-// 更新地图数据
-const updateMap = () => {
-  if (!map || !lineLayer) return;
-
-  const lineSource = lineLayer.getSource();
-  if (!lineSource) return;
-  // 清空之前的内容
-  popups.forEach((popup) => {
-    map?.removeOverlay(popup);
-  });
-  popups.length = 0;
-  placemarks.forEach((placemark) => {
-    map?.removeOverlay(placemark);
-  });
-  placemarks.length = 0;
-  lineSource.clear();
-  if (sortedPlans.value.length === 0) return;
-
-  // 首先收集所有坐标点
-  const coordinates: number[][] = [];
-  sortedPlans.value.forEach((plan, _) => {
-    const coord = [
-      plan.location.coordinates.lng,
-      plan.location.coordinates.lat,
-    ];
-    coordinates.push(coord);
-  });
-
-  // 添加路径
-  const lineFeatures: Feature[] = [];
-  // 然后创建连接线（只在相邻点之间创建）
-  for (let i = 0; i < coordinates.length - 1; i++) {
-    const startCoord = coordinates[i];
-    const endCoord = coordinates[i + 1];
-    const lineCoords = [fromLonLat(startCoord), fromLonLat(endCoord)];
-    const lineString = new LineString(lineCoords);
-    const lineFeature = new Feature({
-      geometry: lineString,
-    });
-    const startPlan = sortedPlans.value[i];
-    const dateColor = getColorForDate(startPlan.startDateTime);
-    // 设置虚线样式
-    lineFeature.setStyle((resolution, index) => {
-      var geometry = lineFeature.getGeometry();
-      if (!geometry) return;
-      var length = geometry.getLength(); //获取线段长度
-      var radio = (50 * index) / length;
-      var dradio = 1; //投影坐标系，如3857等，在EPSG:4326下可以设置dradio=10000
-      var styles = [
-        new Style({
-          stroke: new Stroke({
-            color: `${dateColor}`,
-            width: 6,
-          }),
-        }),
-      ];
-      const zoomLevel = map?.getView().getZoom() || 10;
-      for (var i = 0; i <= 1; i += radio) {
-        var arrowLocation = geometry.getCoordinateAt(i);
-        geometry.forEachSegment(function (start, end) {
-          if (start[0] == end[0] || start[1] == end[1]) return;
-          var dx1 = end[0] - arrowLocation[0];
-          var dy1 = end[1] - arrowLocation[1];
-          var dx2 = arrowLocation[0] - start[0];
-          var dy2 = arrowLocation[1] - start[1];
-          if (dx1 != dx2 && dy1 != dy2) {
-            if (
-              Math.abs(dradio * dx1 * dy2 - dradio * dx2 * dy1) <
-              0.005 / (zoomLevel < 10 ? 1 : (zoomLevel - 10) * 20 + 10)
-            ) {
-              var dx = end[0] - start[0];
-              var dy = end[1] - start[1];
-              var rotation = Math.atan2(dy, dx);
-              styles.push(
-                new Style({
-                  geometry: new Point(arrowLocation),
-                  image: new Icon({
-                    src: RouteArrow,
-                    anchor: [0.5, 0.5],
-                    rotateWithView: false,
-                    rotation: -rotation - Math.PI / 2,
-                    opacity: 0.8,
-                    scale: 0.3,
-                  }),
-                })
-              );
-            }
-          }
-        });
-      }
-      return styles;
-    });
-    lineFeatures.push(lineFeature);
-  }
-  // 添加所有路线（一次性添加）
-  lineSource.addFeatures(lineFeatures);
-
-  // 创建标记点
-  sortedPlans.value.forEach((plan, index) => {
-    const coord = coordinates[index];
-    const placemark = new Placemark({
-      color: getStatusColor(plan.status),
-    });
-    map?.addOverlay(placemark);
-    placemarks.push(placemark);
-    placemark.setClassName("my-placemark z-[10]");
-    placemark.getElement()?.classList.add("scale-[0.8]");
-    placemark.setPosition(fromLonLat(coord));
-    placemark.show(
-      fromLonLat(coord),
-      `<div class="flex items-center justify-center text-black">${
-        index + 1
-      }</div>`
-    );
-    placemark.getElement()?.addEventListener("click", () => {
-      if (popups[index]) {
-        if (popups[index].getPosition()) {
-          popups[index].setPosition(undefined);
-          popups[index].hide();
-        } else {
-          popups[index].setPosition(placemarks[index].getPosition());
-        }
-      }
-    });
-  });
-
-  sortedPlans.value.forEach((plan, index) => {
-    const popup = new Popup({
-      popupClass: "default",
-      closeBox: false,
-      onclose: () => {
-        map?.getTargetElement().focus();
-      },
-      autoPan: {
-        animation: {
-          duration: 100,
-        },
-      },
-    });
-    map?.addOverlay(popup);
-    popups.push(popup);
-    popup.setPopupClass(`my-popup z-[20] bg-white/70 shadow-lg p-1`);
-    popup.setPositioning("top-left");
-    popup.show(placemarks[index].getPosition()!, renderPopupHtml(plan));
-  });
-  const extension = lineLayer.getSource()?.getExtent();
-  if (extension) {
-    map?.getView().fit(extension, {
-      duration: 1000,
-      padding: [50, 50, 50, 50],
-    });
-  }
-};
-
-const togglePopups = () => {
-  showPopups.value = !showPopups.value;
-};
-
-const updatePopupVisibility = () => {
-  if (!map) return;
-  if (!showPopups.value) {
-    popups.forEach((popup) => {
-      popup.hide();
-    });
-  } else {
-    const originPosition = map.getView();
-    const view = {
-      center: originPosition.getCenter(),
-      zoom: originPosition.getZoom(),
-      projection: "EPSG:3857",
-    };
-    popups.forEach((popup, index) => {
-      popup.setPosition(placemarks[index].getPosition());
-    });
-    map.setView(new View(view));
-  }
-};
-
-const refreshMap = () => {
-  loadSortedPlans();
-};
-
-watch(sortedPlans, _.debounce(updateMap, 300), { deep: true });
-
-watch(showPopups, () => {
-  updatePopupVisibility();
-});
-
-onMounted(async () => {
-  await sleep(500);
-  console.log("initMap");
-  await initMap();
-  refreshMap();
-});
-onActivated(() => {
-  updateMap();
-});
-</script>
-
-<style scoped lang="less">
-:deep(.ol-popup-content) {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-:deep(.my-popup) {
-  pointer-events: none;
-  div {
-    display: flex;
-    flex-direction: column;
-  }
-}
-</style> -->
 <template>
   <div class="relative w-screen h-screen flex flex-col">
     <van-nav-bar
@@ -537,7 +42,6 @@ onActivated(() => {
     <div
       ref="mapContainer"
       class="travel-map w-full h-full"
-      @click="handleMapClick"
     ></div>
 
     <!-- 路线详情弹窗 -->
@@ -610,6 +114,7 @@ import { ref, onMounted, watch, computed, onActivated, h, render } from "vue";
 import _ from "lodash";
 import { storeToRefs } from "pinia";
 import { format as fnsFormat } from "date-fns";
+import tinyColor from "tinycolor2";
 import Map from "ol/Map";
 import View from "ol/View";
 import TileLayer from "ol/layer/Tile";
@@ -619,6 +124,7 @@ import { Icon, Style, Text, Fill, Stroke, Circle } from "ol/style";
 import Feature from "ol/Feature";
 import { LineString, Point } from "ol/geom";
 import Placemark from "ol-ext/overlay/Placemark";
+import Select from "ol/interaction/Select";
 import { fromLonLat, toLonLat } from "ol/proj";
 import { useStore } from "@/store";
 import { TravelPlanStatus, TravelPlanType } from "@/data/TravelPlan";
@@ -626,7 +132,12 @@ import { XYZ } from "ol/source";
 import { tdtXYZPoxyCVAUrl, tdtXYZPoxyVECUrl } from "@/api/tdt";
 import { sleep } from "@/utils";
 import Popup from "ol-ext/overlay/Popup";
-import RouteArrow from "@/assets/images/route-arrow.png";
+import { getVectorContext } from "ol/render";
+import { StyleLike } from "ol/style/Style";
+import RenderEvent from "ol/render/Event";
+import { MapRenderEventTypes } from "ol/render/EventType";
+import BaseEvent from "ol/events/Event";
+import { showFailToast } from "vant";
 
 const store = useStore();
 const { travelPlansFromToday } = storeToRefs(store);
@@ -746,9 +257,12 @@ const getAddressByLngLat = (lng: number, lat: number) => {
 };
 
 // 计算两点间距离(公里)
-const calculateDistance = (coord1: number[], coord2: number[]): string => {
-  const [lng1, lat1] = coord1;
-  const [lng2, lat2] = coord2;
+const calculateDistance = (
+  coord1: { lng: number; lat: number },
+  coord2: { lng: number; lat: number }
+): string => {
+  const [lng1, lat1] = [coord1.lng, coord1.lat];
+  const [lng2, lat2] = [coord2.lng, coord2.lat];
 
   const R = 6371; // 地球半径(km)
   const dLat = ((lat2 - lat1) * Math.PI) / 180;
@@ -770,7 +284,8 @@ let map: Map | null = null;
 let lineLayer: VectorLayer<VectorSource> | null = null;
 const placemarks: Placemark[] = [];
 const popups: Popup[] = [];
-const routeFeatures: Feature[] = [];
+const arrowAnime = ref(true);
+let routeUniqId = 0;
 
 const initMap = async () => {
   if (!mapContainer.value) return;
@@ -874,18 +389,19 @@ const updateMap = async () => {
   });
   placemarks.length = 0;
   lineSource.clear();
-  routeFeatures.length = 0;
 
   if (sortedPlans.value.length === 0) return;
 
   // 收集所有坐标点
   const coordinates: number[][] = [];
+  const planIds: string[] = [];
   sortedPlans.value.forEach((plan) => {
     const coord = [
       plan.location.coordinates.lng,
       plan.location.coordinates.lat,
     ];
     coordinates.push(coord);
+    planIds.push(plan.travelPlanId);
   });
 
   // 添加路径
@@ -894,75 +410,223 @@ const updateMap = async () => {
     const startCoord = coordinates[i];
     const endCoord = coordinates[i + 1];
     const lineCoords = [fromLonLat(startCoord), fromLonLat(endCoord)];
+    const linePlans = [planIds[i], planIds[i + 1]];
     const lineString = new LineString(lineCoords);
-    const lineFeature = new Feature({
-      geometry: lineString,
-      startIndex: i,
-      endIndex: i + 1,
-      startCoord,
-      endCoord,
-    });
 
     const startPlan = sortedPlans.value[i];
     const dateColor = getColorForDate(startPlan.startDateTime);
 
-    lineFeature.setStyle((resolution, index) => {
-      var geometry = lineFeature.getGeometry();
-      if (!geometry) return;
-      var length = geometry.getLength();
-      var radio = (50 * index) / length;
-      var dradio = 1;
-      var styles = [
-        new Style({
-          stroke: new Stroke({
-            color: `${dateColor}`,
-            width: 6,
-          }),
-        }),
-      ];
+    // 定义样式
+    const upperPathStyle = new Style({
+      stroke: new Stroke({
+        color: dateColor,
+        width: 5,
+      }),
+    });
+    const arrowCanvas = (function () {
+      const opt = {
+        color: "rgba(255,255,255,1)",
+        lineWidth: 3,
+        arrowHeight: 5,
+        // 箭头夹角（度）
+        angle: 110,
+      };
+      const singleHeight = opt.arrowHeight / 2;
+      // 计算出箭头宽度
+      // 计算余切值
+      const cotA = 1 / Math.tan((opt.angle * Math.PI) / 360);
+      // 使用余切值计算相邻直角边, 箭头偏移宽度
+      const offsetWidth = Math.ceil(cotA * singleHeight);
+      const arrowWidth = offsetWidth + opt.lineWidth;
 
-      for (var i = 0; i <= 1; i += radio) {
-        var arrowLocation = geometry.getCoordinateAt(i);
-        geometry.forEachSegment(function (start, end) {
-          if (start[0] == end[0] || start[1] == end[1]) return;
-          var dx1 = end[0] - arrowLocation[0];
-          var dy1 = end[1] - arrowLocation[1];
-          var dx2 = arrowLocation[0] - start[0];
-          var dy2 = arrowLocation[1] - start[1];
-          if (dx1 != dx2 && dy1 != dy2) {
-            if (Math.abs(dradio * dx1 * dy2 - dradio * dx2 * dy1) < 0.001) {
-              var dx = end[0] - start[0];
-              var dy = end[1] - start[1];
-              var rotation = Math.atan2(dy, dx);
-              styles.push(
-                new Style({
-                  geometry: new Point(arrowLocation),
-                  image: new Icon({
-                    src: RouteArrow,
-                    anchor: [0.5, 0.5],
-                    rotateWithView: false,
-                    rotation: -rotation - Math.PI / 2,
-                    opacity: 0.8,
-                    scale: 0.3,
-                  }),
-                })
-              );
+      const canvas = document.createElement("canvas");
+      canvas.width = arrowWidth;
+      canvas.height = opt.arrowHeight;
+      let ctx = canvas.getContext("2d", { willReadFrequently: true })!;
+      ctx.fillStyle = opt.color;
+      ctx.strokeStyle = opt.color;
+      ctx.beginPath();
+      ctx.lineTo(0, 0);
+      ctx.lineTo(opt.lineWidth, 0);
+      ctx.lineTo(arrowWidth, singleHeight);
+      ctx.lineTo(opt.lineWidth, opt.arrowHeight);
+      ctx.lineTo(0, opt.arrowHeight);
+      ctx.lineTo(offsetWidth, singleHeight);
+      ctx.closePath();
+      ctx.fill();
+      return canvas;
+    })();
+    const createArrowStyle = (
+      resolution: number,
+      offset: number,
+      vectorContext?: any
+    ) => {
+      let resStyles: Style[] = [];
+      let lineLength = lineString.getLength() / resolution;
+      if (lineLength < 50) {
+        return resStyles;
+      }
+      let numArr = Math.ceil(lineLength / 100);
+      let points = [];
+      for (let i = 0; i <= numArr; i++) {
+        let fracPos = i / numArr + offset;
+        if (fracPos > 1) fracPos -= 1;
+        let pg = new Feature({
+          geometry: new Point(lineString.getCoordinateAt(fracPos)),
+        });
+        points.push(pg);
+      }
+      //确定方向并绘制
+      lineString.forEachSegment((start, end) => {
+        let line = new LineString([start, end]);
+        _.forEach(points, (point) => {
+          let coord = point.getGeometry()!.getFirstCoordinate();
+          let cPoint = line.getClosestPoint(coord);
+          if (
+            Math.abs(cPoint[0] - coord[0]) < 1 &&
+            Math.abs(cPoint[1] - coord[1]) < 1
+          ) {
+            let dx = end[0] - start[0];
+            let dy = end[1] - start[1];
+            let rotation = Math.atan2(dy, dx);
+            let arrowStyle = new Style({
+              image: new Icon({
+                img: arrowCanvas,
+                anchor: [1, 0.5],
+                rotateWithView: true,
+                rotation: -rotation,
+                width: arrowCanvas.width,
+                height: arrowCanvas.height,
+                // imgSize: [arrowCanvas.width, arrowCanvas.height],
+              }),
+            });
+            if (vectorContext) {
+              vectorContext.drawFeature(point, arrowStyle);
+            } else {
+              arrowStyle.setGeometry(point.getGeometry()!);
+              resStyles.push(arrowStyle);
             }
           }
         });
+      });
+
+      return resStyles;
+    };
+
+    const bottomPathStyle = new Style({
+      stroke: new Stroke({
+        color: tinyColor(dateColor).darken(20).toHslString(),
+        width: 7,
+      }),
+    });
+    const drawVectorFeature = (
+      layer: VectorLayer<VectorSource>,
+      object: {
+        geom: LineString;
+        style: StyleLike;
+        kv?: Record<string, any>;
       }
-      return styles;
+    ) => {
+      const geom = object.geom;
+      let feature = new Feature({
+        geometry: geom,
+      });
+      if (object.kv?.id) {
+        feature.setId(object.kv.id);
+      }
+      if (object.style) {
+        feature.setStyle(object.style);
+      }
+      if (object.kv) {
+        Object.getOwnPropertyNames(object.kv).forEach(function (key) {
+          feature.set(key, object.kv![key]);
+        });
+      }
+      lineFeatures.push(feature);
+      // layer.getSource()!.addFeature(feature);
+      return feature;
+    };
+    drawVectorFeature(lineLayer, {
+      geom: lineString,
+      style: bottomPathStyle,
+      kv: {
+        travelPlanIds: linePlans,
+      },
     });
 
-    lineFeatures.push(lineFeature);
-    routeFeatures.push(lineFeature);
+    let uid = routeUniqId++;
+    let styles: StyleLike = upperPathStyle;
+    if (!arrowAnime.value) {
+      styles = function (feature, resolution) {
+        let lineLength = lineString.getLength() / resolution;
+        let offset = 100 / lineLength / 2;
+        let res = createArrowStyle(resolution, offset);
+        res.push(upperPathStyle);
+        return res;
+      };
+    }
+    drawVectorFeature(lineLayer, {
+      geom: lineString,
+      style: styles,
+      kv: { _uid_: uid, travelPlanIds: linePlans },
+    });
+    if (arrowAnime.value) {
+      // 绘制箭头动画函数
+      let offset = 0.01;
+      const drawArrow = function (evt: RenderEvent) {
+        var vct = getVectorContext(evt);
+        const features = lineLayer!
+          .getSource()!
+          .getFeatures()
+          .filter((f) => f.get("_uid_") === uid);
+
+        if (!features.length) {
+          lineLayer?.un("postrender", drawArrow);
+          return;
+        }
+
+        let resolution = evt.frameState!.viewState.resolution;
+        createArrowStyle(resolution, offset, vct);
+
+        let lineLength = lineString.getLength() / resolution;
+        offset = offset + 0.2 / lineLength;
+        //复位
+        if (offset >= 1) offset = 0.001;
+        // 告诉地图执行动画
+        evt.frameState!.animate = true;
+      };
+      lineLayer?.on("postrender", drawArrow);
+    }
   }
 
   lineSource.addFeatures(lineFeatures);
+  // 添加选择交互
+  const select = new Select({
+    layers: [lineLayer],
+    hitTolerance: 5, // 增加点击容差，更容易选中线
+    multi: false, // 不允许多选
+    toggleCondition: undefined, // 禁用切换选择（每次点击都会触发）
+    // condition: "click", // 使用click事件（不是singleclick）
+    style: null, // 设置为null表示不应用任何选择样式
+  });
+  map.addInteraction(select);
+
+  // 监听选择变化
+  select.on("select", function (e) {
+    if (e.selected.length > 0) {
+      const feature = e.selected[0];
+      handleLineClick(feature.get("travelPlanIds"));
+      select.getFeatures().clear();
+    }
+  });
 
   // 创建标记点
   sortedPlans.value.forEach((plan, index) => {
     const coord = coordinates[index];
+    const nthIndex = coordinates
+      .slice(0, index + 1)
+      .filter((x) => x[0] === coord[0] && x[1] === coord[1]).length;
+
     const placemark = new Placemark({
       color: getStatusColor(plan.status),
     });
@@ -971,6 +635,10 @@ const updateMap = async () => {
     placemark.setClassName("my-placemark z-[10]");
     placemark.getElement()?.classList.add("scale-[0.8]");
     placemark.setPosition(fromLonLat(coord));
+    placemark.setOffset([
+      Math.pow(-1, nthIndex) * (nthIndex - 1) * 10,
+      Math.pow(-1, nthIndex) * -(nthIndex - 1) * 10,
+    ]);
     placemark.show(
       fromLonLat(coord),
       `<div class="flex items-center justify-center text-black">${
@@ -990,6 +658,10 @@ const updateMap = async () => {
   });
 
   sortedPlans.value.forEach((plan, index) => {
+    const coord = coordinates[index];
+    const nthIndex = coordinates
+      .slice(0, index + 1)
+      .filter((x) => x[0] === coord[0] && x[1] === coord[1]).length;
     const popup = new Popup({
       popupClass: "default",
       closeBox: false,
@@ -1006,6 +678,10 @@ const updateMap = async () => {
     popups.push(popup);
     popup.setPopupClass(`my-popup z-[20] bg-white/70 shadow-lg p-1`);
     popup.setPositioning("top-left");
+    popup.setOffset([
+      Math.pow(-1, nthIndex) * (nthIndex - 1) * 10,
+      Math.pow(-1, nthIndex) * -(nthIndex - 1) * 10,
+    ]);
     popup.show(placemarks[index].getPosition()!, renderPopupHtml(plan));
   });
 
@@ -1016,67 +692,38 @@ const updateMap = async () => {
       padding: [50, 50, 50, 50],
     });
   }
+  if (!showPopups.value) {
+    showPopups.value = true;
+  }
 };
 
-const handleMapClick = async (event: MouseEvent) => {
+const handleLineClick = async (planIds: string[]) => {
   if (!map || !lineLayer) return;
-
-  // 获取点击位置
-  const pixel = map.getEventPixel(event);
-  const features = map.getFeaturesAtPixel(pixel, {
-    layerFilter: (layer) => layer === lineLayer,
-    hitTolerance: 10,
-  });
-
-  if (features.length > 0) {
-    const feature = features[0] as Feature & {
-      getProperties(): {
-        startIndex: number;
-        endIndex: number;
-        startCoord: number[];
-        endCoord: number[];
-      };
-    };
-    const { startIndex, endIndex, startCoord, endCoord } =
-      feature.getProperties();
-
-    try {
-      // 获取起点和终点地址
-      const [startAddress, endAddress] = await Promise.all([
-        getAddressByLngLat(startCoord[0], startCoord[1]),
-        getAddressByLngLat(endCoord[0], endCoord[1]),
-      ]);
-
-      // 计算距离
-      const distance = calculateDistance(startCoord, endCoord);
-
-      // 获取时间信息
-      const startPlan = sortedPlans.value[startIndex];
-      const endPlan = sortedPlans.value[endIndex];
-      const time = `${formatDateTime(
-        startPlan.startDateTime
-      )} - ${formatDateTime(endPlan.endDateTime)}`;
-
-      selectedRoute.value = {
-        startAddress: startAddress || "未知地址",
-        endAddress: endAddress || "未知地址",
-        distance,
-        time,
-      };
-    } catch (error) {
-      console.error("获取路线详情失败:", error);
-      selectedRoute.value = {
-        startAddress: "未知地址",
-        endAddress: "未知地址",
-        distance: calculateDistance(startCoord, endCoord),
-        time: `${formatDateTime(
-          sortedPlans.value[startIndex].startDateTime
-        )} - ${formatDateTime(sortedPlans.value[endIndex].endDateTime)}`,
-      };
-    }
-  } else {
+  const startPlan = sortedPlans.value.find(
+    (plan) => plan.travelPlanId === planIds[0]
+  );
+  const endPlan = sortedPlans.value.find(
+    (plan) => plan.travelPlanId === planIds[1]
+  );
+  if (!startPlan || !endPlan) {
     selectedRoute.value = null;
+    showFailToast("未找到路线");
   }
+  const startAddress = startPlan!.location.name;
+  const endAddress = endPlan!.location.name;
+  const distance = calculateDistance(
+    startPlan!.location.coordinates,
+    endPlan!.location.coordinates
+  );
+  const time = `${formatDateTime(startPlan!.startDateTime)} - ${formatDateTime(
+    endPlan!.endDateTime
+  )}`;
+  selectedRoute.value = {
+    startAddress: startAddress,
+    endAddress: endAddress,
+    distance,
+    time,
+  };
 };
 
 const togglePopups = () => {
@@ -1085,7 +732,6 @@ const togglePopups = () => {
 
 const toggleLegend = () => {
   showLegend.value = !showLegend.value;
-  console.log(!showLegend.value);
 };
 
 const updatePopupVisibility = () => {
