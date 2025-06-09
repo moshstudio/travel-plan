@@ -28,7 +28,6 @@ const travelDays = computed(() => {
 // 加载数据函数 - 实际项目中替换为API调用
 const loadData = async () => {
   // 这里应该是API调用
-  console.log(`Loading data for travel`);
 };
 
 onMounted(() => {

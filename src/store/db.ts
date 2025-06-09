@@ -1,3 +1,4 @@
+import { TravelChecklistType } from "@/data/checklist";
 import { TravelExpenseType } from "@/data/expense";
 import { ParticipantType } from "@/data/participants";
 import { TravelPlanType, TravelType } from "@/data/TravelPlan";
@@ -29,7 +30,7 @@ class TravelPlannerDB extends Dexie {
       travelPlans:
         "++id, travelPlanId, travelId, title, description, tags, startDateTime, endDateTime, isAllDay, timezone, location, status, priority, budget, attachments, participants, createdAt, updatedAt, createdBy, version, recurrence",
       travelChecklists:
-        "++id, itemId, travelId, name, category, isPacked, quantity, importance, notes, createdAt, updatedAt",
+        "++id, itemId, travelId, name, category, isPacked, quantity, priority, notes, createdAt, updatedAt",
 
       travelExpenses:
         "++id, expenseId, travelId, amount, currency, tags, description, dateTime, paymentMethod, location, sharedWith, attachments, isReimbursed, createdAt, updatedAt",

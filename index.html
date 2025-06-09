@@ -249,7 +249,7 @@
           cloud.style.top = `${top}%`;
 
           // 随机动画
-          const duration = 5 + Math.random() * 5;
+          const duration = 5 + Math.random() * 10;
           const delay = 0;
           cloud.style.animation = `cloudMove ${duration}s linear ${delay}s infinite`;
 
@@ -274,12 +274,11 @@
         }
       }
 
+      createClouds();
+      // 记录加载开始时间
+      const loadStartTime = Date.now();
       // 页面加载完成后显示splash动画
       document.addEventListener("DOMContentLoaded", () => {
-        createClouds();
-
-        // 记录加载开始时间
-        const loadStartTime = Date.now();
         const MIN_DISPLAY_TIME = 1000; // 最少显示1秒
 
         // 监听app加载完成

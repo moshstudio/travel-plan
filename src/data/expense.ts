@@ -9,19 +9,21 @@ export interface TravelExpenseType {
   currency: "CNY" | "USD" | "EUR";
   tags?: string[];
   description?: string;
-  dateTime: number;
-  paymentMethod:
-    | "cash" // 现金
-    | "credit_card" // 信用卡
-    | "alipay" // 支付宝"
-    | "wechat_pay" // 微信支付
-    | "bank_transfer" // 银行转账
-    | "other"; // 其他支付方式
-
-  location?: AddressType;
+  dateTime: Date;
+  paymentMethod: PayMethod;
+  location: AddressType;
   sharedWith?: string[];
   attachments?: AttachmentType[];
   isReimbursed?: boolean;
-  createdAt: string;
-  updatedAt: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export enum PayMethod {
+  cash = "cash",
+  credit_card = "credit_card",
+  alipay = "alipay",
+  wechat_pay = "wechat_pay",
+  bank_transfer = "bank_transfer",
+  other = "other",
 }

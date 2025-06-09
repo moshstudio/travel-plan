@@ -159,12 +159,12 @@ const getBarHeight = (amount: number) => {
 
               <div
                 class="relative w-full rounded-t-lg bg-gradient-to-t from-indigo-400 to-indigo-300 shadow-sm hover:shadow-md transition-all active:scale-[0.98]"
-                :style="{ height: getBarHeight(item.amount) }"
+                :style="{ height: getBarHeight(Number(item.amount)) }"
               >
                 <div
                   class="absolute -top-6 left-1/2 -translate-x-1/2 text-[11px] font-medium bg-indigo-100 text-indigo-700 px-1.5 rounded-full shadow-sm whitespace-nowrap"
                 >
-                  ¥{{ item.amount.toFixed(0) }}
+                  ¥{{ Number(item.amount).toFixed(0) }}
                 </div>
               </div>
             </div>

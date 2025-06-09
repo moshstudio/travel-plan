@@ -1,12 +1,17 @@
 <script setup lang="ts">
-import { ref, computed } from "vue";
+import { ref, computed, reactive, toRaw, onMounted } from "vue";
 import ExpenseItemCard from "@/components/travelPlan/ExpenseCard.vue";
 import { useStore } from "@/store";
 import { storeToRefs } from "pinia";
-import { TravelExpenseType } from "@/data/expense";
+import { PayMethod, TravelExpenseType } from "@/data/expense";
+import { useDisplayStore } from "@/store/displayStore";
+import { formatDateTime } from "@/utils/datetime";
 
 const store = useStore();
-const { travelExpenses } = storeToRefs(store);
+const displayStore = useDisplayStore();
+const { currentTravel, travelExpenses } = storeToRefs(store);
+const { showExpenseCreatePopup, expenseGroupingMode: groupingMode } =
+  storeToRefs(displayStore);
 
 // Grouping options
 const groupingOptions = [
@@ -15,19 +20,7 @@ const groupingOptions = [
   { value: "currency", name: "货币" },
   { value: "payment", name: "支付方式" },
 ];
-const groupingMode = ref("date");
 const showGroupMenu = ref(false);
-
-// Format date for display
-const formatDate = (timestamp: number) => {
-  const date = new Date(timestamp);
-  return date.toLocaleDateString("zh-CN", {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-    weekday: "short",
-  });
-};
 
 // Group items by selected mode
 const groupedExpenses = computed(() => {
@@ -42,7 +35,7 @@ const groupedExpenses = computed(() => {
         groupKey = item.tags?.length ? item.tags[0] : "未分类";
         break;
       case "date":
-        groupKey = formatDate(item.dateTime);
+        groupKey = formatDateTime(item.dateTime.getTime(), "yyyy/MM/dd HH:mm");
         break;
       case "currency":
         groupKey = item.currency || "未知货币";
@@ -65,7 +58,9 @@ const groupedExpenses = computed(() => {
   switch (groupingMode.value) {
     case "date":
       groupKeys.sort((a, b) => {
-        return grouped[b][0].dateTime - grouped[a][0].dateTime;
+        return (
+          grouped[b][0].dateTime.getTime() - grouped[a][0].dateTime.getTime()
+        );
       });
       break;
     case "currency":
@@ -135,7 +130,7 @@ const groupTotals = computed(() => {
       totals[key] = {
         amount: Object.values(currencyGroups).reduce((a, b) => a + b, 0),
         currency: Object.entries(currencyGroups)
-          .map(([curr, amount]) => `${amount.toFixed(2)} ${curr}`)
+          .map(([curr, amount]) => `${Number(amount).toFixed(2)} ${curr}`)
           .join(" + "),
       };
     }
@@ -296,7 +291,7 @@ const categories = computed(() => {
                       v-for="(amount, currency) in totalExpenses"
                       :key="currency"
                     >
-                      {{ amount.toFixed(2) }} {{ currency }}
+                      {{ Number(amount).toFixed(2) }} {{ currency }}
                     </div>
                   </template>
                   <template v-else>
@@ -315,7 +310,7 @@ const categories = computed(() => {
                       v-for="(amount, currency) in reimbursedExpenses"
                       :key="currency"
                     >
-                      {{ amount.toFixed(2) }} {{ currency }}
+                      {{ Number(amount).toFixed(2) }} {{ currency }}
                     </div>
                   </template>
                   <template v-else>

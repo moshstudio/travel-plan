@@ -24,9 +24,14 @@ const hasDescription = computed(() => {
 <template>
   <div class="bg-white rounded-xl shadow-sm p-4 border border-gray-100">
     <!-- 标题部分 -->
-    <div class="flex items-center mb-4">
-      <div class="h-5 w-1 bg-blue-500 rounded-full mr-2"></div>
+    <div class="flex items-center justify-between mb-4">
       <h2 class="text-lg font-semibold text-gray-800">旅行基本信息</h2>
+      <p
+        class="text-blue-500 text-sm van-haptics-feedback"
+        @click.stop="$router.push({ name: 'ShareRoad' })"
+      >
+        分享
+      </p>
     </div>
 
     <!-- 主要内容 -->

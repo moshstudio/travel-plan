@@ -13,6 +13,8 @@ const { currentTravel, travelPlansBeforeToday, travelPlansFromToday } =
   storeToRefs(store);
 
 const showPlansBeforeToday = ref(false);
+const containerRef = ref<HTMLElement | null>(null);
+const scrollPosition = ref(0);
 
 // 格式化日期显示
 const formatDate = (date: Date) => {
@@ -50,10 +52,39 @@ const groupedPlans = computed(() => {
 
   return groups;
 });
+
+const toggleShowPlansBeforeToday = async () => {
+  // 保存当前滚动位置
+  if (containerRef.value) {
+    scrollPosition.value = containerRef.value.scrollTop;
+  }
+
+  // 切换显示状态
+  showPlansBeforeToday.value = !showPlansBeforeToday.value;
+
+  // 等待DOM更新
+  await nextTick();
+
+  // 恢复滚动位置
+  if (containerRef.value) {
+    if (showPlansBeforeToday.value) {
+      const expiredSection = containerRef.value.querySelector(
+        ".expired-plans-section"
+      );
+      containerRef.value.scrollTop =
+        scrollPosition.value + (expiredSection?.clientHeight || 0);
+      containerRef.value.scrollTo({
+        top: scrollPosition.value + (expiredSection?.clientHeight || 0) - 100,
+        behavior: "smooth",
+      });
+    }
+  }
+};
 </script>
 
 <template>
   <div
+    ref="containerRef"
     v-remember-scroll
     class="w-full h-full flex flex-col gap-4 overflow-auto thin-scrollbar"
   >
@@ -62,9 +93,6 @@ const groupedPlans = computed(() => {
         v-if="showPlansBeforeToday && travelPlansBeforeToday?.length"
         class="expired-plans-section"
       >
-        <div class="section-header text-gray-500 text-sm px-2 py-1">
-          已结束的计划
-        </div>
         <transition-group
           name="list"
           tag="div"
@@ -83,7 +111,7 @@ const groupedPlans = computed(() => {
       <van-divider class="custom-divider">
         <span
           class="divider-text"
-          @click="showPlansBeforeToday = !showPlansBeforeToday"
+          @click="toggleShowPlansBeforeToday"
         >
           {{ !showPlansBeforeToday ? "显示更早的计划" : "隐藏更早的计划" }}
         </span>

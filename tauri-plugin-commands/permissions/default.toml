@@ -1,3 +1,7 @@
 [default]
 description = "Default permissions for the plugin"
-permissions = ["allow-exit-app"]
+permissions = [
+  "allow-exit-app",
+  "allow-save-image-to-pictures",
+  "allow-save-file-to-downloads",
+]

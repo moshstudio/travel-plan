@@ -1,5 +1,23 @@
 @import "tailwindcss";
 
+@layer base {
+  :root {
+    /* 更鲜艳的颜色方案 */
+    --plan-planned: #616161;
+    --plan-upcoming: #ffd700;
+    --plan-in-progress: #4caf50;
+    --plan-completed: #2196f3;
+    --plan-expired: #ff5252;
+    --plan-cancelled: #b0b0b0;
+    --plan-deleted: #B71C1C;
+    --plan-priority-low: #689f38;
+    --plan-priority-medium: #ff9800;
+    --plan-priority-high: #d32f2f;
+  }
+}
+
+@config "../../tailwind.config.js";
+
 @layer utilities {
   .thin-scrollbar {
     scrollbar-width: thin;

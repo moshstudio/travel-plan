@@ -9,7 +9,10 @@ const props = defineProps<{
 
 // 总花费
 const totalExpense = computed(() => {
-  return props.expenses.reduce((sum, expense) => sum + expense.amount, 0);
+  return props.expenses.reduce(
+    (sum, expense) => sum + Number(expense.amount),
+    0
+  );
 });
 
 // 按标签统计花费
@@ -93,17 +96,21 @@ const getExpenseMethodText = (
           >
             <div class="flex justify-between text-base mb-1">
               <span class="text-gray-700 font-medium">{{ tag }}</span>
-              <span class="font-medium">{{ amount.toFixed(2) }} 元</span>
+              <span class="font-medium"
+                >{{ Number(amount).toFixed(2) }} 元</span
+              >
             </div>
             <div class="flex items-center">
               <div class="w-full bg-gray-100 rounded-full h-2.5 mr-2">
                 <div
                   class="bg-gradient-to-r from-indigo-400 to-purple-400 h-2.5 rounded-full"
-                  :style="{ width: `${(amount / totalExpense) * 100}%` }"
+                  :style="{
+                    width: `${(Number(amount) / totalExpense) * 100}%`,
+                  }"
                 ></div>
               </div>
               <span class="text-xs text-gray-400"
-                >{{ ((amount / totalExpense) * 100).toFixed(1) }}%</span
+                >{{ ((Number(amount) / totalExpense) * 100).toFixed(1) }}%</span
               >
             </div>
           </li>
@@ -126,17 +133,17 @@ const getExpenseMethodText = (
               <span class="text-gray-700 font-medium capitalize">
                 {{ getExpenseMethodText(method) }}
               </span>
-              <span class="font-medium">{{ amount.toFixed(2) }} 元</span>
+              <span class="font-medium">{{ Number(amount).toFixed(2) }} 元</span>
             </div>
             <div class="flex items-center">
               <div class="w-full bg-gray-100 rounded-full h-2.5 mr-2">
                 <div
                   class="bg-gradient-to-r from-amber-400 to-orange-400 h-2.5 rounded-full"
-                  :style="{ width: `${(amount / totalExpense) * 100}%` }"
+                  :style="{ width: `${(Number(amount) / totalExpense) * 100}%` }"
                 ></div>
               </div>
               <span class="text-xs text-gray-400"
-                >{{ ((amount / totalExpense) * 100).toFixed(1) }}%</span
+                >{{ ((Number(amount) / totalExpense) * 100).toFixed(1) }}%</span
               >
             </div>
           </li>

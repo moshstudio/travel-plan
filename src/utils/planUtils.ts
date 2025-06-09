@@ -1,37 +1,10 @@
+import { PayMethod } from "@/data/expense";
 import { TravelPlanStatus, TravelPlanType } from "@/data/TravelPlan";
-import { useStore } from "@/store";
 
 export function getPlanStatus(
   plan: TravelPlanType,
   now: Date
 ): TravelPlanStatus {
-  const nowTime = now.getTime();
-  if (plan.status == "completed") return TravelPlanStatus.completed;
-  if (plan.status == "deleted") return TravelPlanStatus.deleted;
-  if (plan.status == "cancelled") return TravelPlanStatus.cancelled;
-
-  const oneDay = 24 * 60 * 60 * 1000; // 一天的毫秒数
-  if (nowTime >= plan.startDateTime - oneDay && nowTime < plan.startDateTime) {
-    if (plan.status != TravelPlanStatus.upcoming) {
-      plan.status = TravelPlanStatus.upcoming;
-      const store = useStore();
-      store.updateTravelPlan(plan);
-    }
-  }
-  if (nowTime > plan.endDateTime) {
-    if (plan.status != TravelPlanStatus.expired) {
-      plan.status = TravelPlanStatus.expired;
-      const store = useStore();
-      store.updateTravelPlan(plan);
-    }
-  }
-  if (nowTime >= plan.startDateTime && nowTime <= plan.endDateTime) {
-    if (plan.status != TravelPlanStatus.inProgress) {
-      plan.status = TravelPlanStatus.inProgress;
-      const store = useStore();
-      store.updateTravelPlan(plan);
-    }
-  }
   return plan.status;
 }
 
@@ -44,4 +17,87 @@ export function getProgressPercentage(plan: TravelPlanType, now: Date): number {
   const elapsed = nowTime - plan.startDateTime;
 
   return Math.round((elapsed / totalDuration) * 100);
+}
+
+export function getPlanPriorityColor(
+  priority: "low" | "medium" | "high"
+): string {
+  const color =
+    priority === "low"
+      ? getComputedStyle(document.documentElement)
+          .getPropertyValue("--plan-priority-low")
+          .trim()
+      : priority === "medium"
+      ? getComputedStyle(document.documentElement)
+          .getPropertyValue("--plan-priority-medium")
+          .trim()
+      : getComputedStyle(document.documentElement)
+          .getPropertyValue("--plan-priority-high")
+          .trim();
+  return color;
+}
+
+export function getPlanStatusColor(status: TravelPlanStatus): string {
+  const style = getComputedStyle(document.documentElement);
+  switch (status) {
+    case "planned":
+      return style.getPropertyValue("--plan-planned").trim();
+    case "upcoming":
+      return style.getPropertyValue("--plan-upcoming").trim();
+    case "in-progress":
+      return style.getPropertyValue("--plan-in-progress").trim();
+    case "completed":
+      return style.getPropertyValue("--plan-completed").trim();
+    case "expired":
+      return style.getPropertyValue("--plan-expired").trim();
+    case "cancelled":
+      return style.getPropertyValue("--plan-cancelled").trim();
+    case "deleted":
+      return style.getPropertyValue("--plan-deleted").trim();
+    default:
+      return style.getPropertyValue("--plan-planned").trim();
+  }
+}
+
+export function getPlanStatusText(status?: TravelPlanStatus): string {
+  if (!status) return "";
+  switch (status) {
+    case TravelPlanStatus.planned:
+      return "计划中";
+    case TravelPlanStatus.upcoming:
+      return "即将开始";
+    case TravelPlanStatus.inProgress:
+      return "进行中";
+    case TravelPlanStatus.expired:
+      return "已过期";
+    case TravelPlanStatus.completed:
+      return "已完成";
+    case TravelPlanStatus.cancelled:
+      return "已取消";
+    case TravelPlanStatus.deleted:
+      return "已删除";
+  }
+}
+
+export function getExpensePayMethodColor(payMethod: PayMethod | undefined) {
+  if (!payMethod) return "";
+  switch (payMethod) {
+    case PayMethod.alipay:
+      return "#1677FF";
+
+    case PayMethod.wechat_pay:
+      return "#07C160";
+
+    case PayMethod.cash:
+      return "#FFD700";
+
+    case PayMethod.credit_card:
+      return "#FF6B81";
+
+    case PayMethod.bank_transfer:
+      return "#2E8B57";
+
+    case PayMethod.other:
+      return "#A9A9A9";
+  }
 }

@@ -64,7 +64,9 @@
               size="12"
               class="mr-1"
             />
-            <span>{{ formatDate(item.dateTime) }}</span>
+            <span>{{
+              formatDateTime(item.dateTime.getTime(), "yyyy/MM/dd HH:mm")
+            }}</span>
           </div>
         </div>
 
@@ -118,6 +120,7 @@
 import { TravelExpenseType } from "@/data/expense";
 import router from "@/router";
 import { useStore } from "@/store";
+import { formatDateTime } from "@/utils/datetime";
 import { format } from "date-fns";
 import _ from "lodash";
 import { showConfirmDialog } from "vant";
@@ -166,8 +169,8 @@ const onActionSelect = (action: { value: string }) => {
   switch (action.value) {
     case "edit":
       router.push({
-        name: "EditExpense",
-        params: { expenseId: props.item.expenseId },
+        name: "ExpenseMap",
+        query: { expenseId: props.item.expenseId },
       });
       break;
     case "delete":

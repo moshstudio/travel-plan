@@ -2,13 +2,12 @@
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
   "description": "Capability for the main window",
-  "windows": [
-    "main"
-  ],
+  "windows": ["main"],
   "permissions": [
     "core:default",
     "opener:default",
     "proxy-plugin:default",
+    "androidfs-plugin:default",
     "log:default",
     "http:default",
     {
@@ -29,6 +28,7 @@
       ]
     },
     "commands:default",
-    "os:default"
+    "os:default",
+    "dialog:default"
   ]
 }

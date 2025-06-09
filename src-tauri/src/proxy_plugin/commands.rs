@@ -86,7 +86,6 @@ async fn handle_proxy_request(
     } else {
         uri.to_string()
     };
-    log::error!("Decoded URL: {}", uri.clone());
     // 解码headers
     let decoded_headers = urlencoding::decode(headers_part).unwrap_or_default();
     let mut header_map = reqwest::header::HeaderMap::new();

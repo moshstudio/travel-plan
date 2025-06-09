@@ -2,7 +2,11 @@ import _ from "lodash";
 import { defineStore } from "pinia";
 import { useStorage } from "@vueuse/core";
 import { computed, onMounted, ref, toRaw, triggerRef, watch } from "vue";
-import { TravelPlanType, TravelType } from "@/data/TravelPlan";
+import {
+  TravelPlanStatus,
+  TravelPlanType,
+  TravelType,
+} from "@/data/TravelPlan";
 import { AddressType } from "@/data/address";
 import { useNow } from "@vueuse/core";
 import db, { KVType } from "./db";
@@ -17,9 +21,6 @@ import router from "@/router";
 
 export const useStore = defineStore("store", () => {
   const nowRef = useNow({ interval: 1000 });
-
-  const planSelectAddress = ref<AddressType>();
-  const expenseSelectAddress = ref<AddressType>();
 
   /**旅行 */
   const currentTravel = useObservable<TravelType | undefined>(
@@ -98,7 +99,9 @@ export const useStore = defineStore("store", () => {
     // 今天之后的计划
     const today = new Date(nowRef.value).setHours(0, 0, 0, 0);
     return _.orderBy(
-      travelPlans.value?.filter((plan) => plan.endDateTime >= today),
+      travelPlans.value?.filter(
+        (plan) => plan.startDateTime >= today || plan.endDateTime >= today
+      ),
       ["startDateTime", "endDateTime"],
       ["asc", "asc"]
     );
@@ -106,14 +109,18 @@ export const useStore = defineStore("store", () => {
   const travelPlansBeforeToday = computed(() => {
     // 今天之前的计划
     const today = new Date(nowRef.value).setHours(0, 0, 0, 0);
-    return travelPlans.value?.filter((plan) => plan.endDateTime < today);
+    return _.orderBy(
+      travelPlans.value?.filter(
+        (plan) => !(plan.startDateTime >= today || plan.endDateTime >= today)
+      ),
+      ["startDateTime", "endDateTime"],
+      ["asc", "asc"]
+    );
   });
   const customTravelPlanTags = useObservable<string[]>(
     // 自定义旅行计划标签
     from(
       liveQuery(async () => {
-        console.log("get customTravelPlanTags");
-
         const kv = await db.kvs
           .where("key")
           .equals("customTravelPlanTags")
@@ -141,6 +148,41 @@ export const useStore = defineStore("store", () => {
     }
   };
 
+  onMounted(() => {
+    // 定时检查状态并更新
+    setInterval(() => {
+      for (const plan of travelPlans.value || []) {
+        if (["completed", "deleted", "cancelled"].includes(plan.status)) {
+          return;
+        }
+        const oneDay = 24 * 60 * 60 * 1000; // 一天的毫秒数
+        const nowTime = nowRef.value.getTime();
+        if (
+          nowTime >= plan.startDateTime - oneDay &&
+          nowTime < plan.startDateTime
+        ) {
+          if (plan.status != TravelPlanStatus.upcoming) {
+            plan.status = TravelPlanStatus.upcoming;
+            updateTravelPlan(plan);
+          }
+        } else if (nowTime > plan.endDateTime) {
+          if (plan.status != TravelPlanStatus.expired) {
+            plan.status = TravelPlanStatus.expired;
+            updateTravelPlan(plan);
+          }
+        } else if (
+          nowTime >= plan.startDateTime &&
+          nowTime <= plan.endDateTime
+        ) {
+          if (plan.status != TravelPlanStatus.inProgress) {
+            plan.status = TravelPlanStatus.inProgress;
+            updateTravelPlan(plan);
+          }
+        }
+      }
+    }, 1000);
+  });
+
   const getTravelPlanById = (travelPlanId: string) => {
     // 根据ID获取旅行计划
     return travelPlans.value?.find(
@@ -152,7 +194,7 @@ export const useStore = defineStore("store", () => {
   ) => {
     // 添加旅行计划
     const ret = await db.travelPlans.add(plan as TravelPlanType);
-    return ret;
+    return await db.travelPlans.get(ret);
   };
   const updateTravelPlan = async (plan: TravelPlanType) => {
     // 更新旅行计划
@@ -245,16 +287,7 @@ export const useStore = defineStore("store", () => {
       switchMap((_) => {
         return from(
           liveQuery(async () => {
-            console.log("currentTravel.value");
-
             if (!currentTravel.value) return [];
-            console.log(
-              await db.travelExpenses
-                .where("travelId")
-                .equals(currentTravel.value.travelId)
-                .toArray()
-            );
-
             return await db.travelExpenses
               .where("travelId")
               .equals(currentTravel.value.travelId)
@@ -272,7 +305,7 @@ export const useStore = defineStore("store", () => {
   ) => {
     // 添加花费
     const ret = await db.travelExpenses.add(expense as TravelExpenseType);
-    return ret;
+    return await db.travelExpenses.get(ret);
   };
   const updateTravelExpense = async (expense: TravelExpenseType) => {
     // 更新花费
@@ -325,49 +358,13 @@ export const useStore = defineStore("store", () => {
     addBackCallback("EditTravel", async () => {
       router.push({ name: "Travel" });
     });
-    addBackCallback("CreatePlan", async () => {
+    addBackCallback("PlanMap", async () => {
       router.push({ name: "Travel" });
     });
-    addBackCallback("EditPlan", async () => {
+    addBackCallback("ExpenseMap", async () => {
       router.push({ name: "Travel" });
     });
-    addBackCallback("PlanPosition", async () => {
-      if (route.params.travelPlanId) {
-        router.push({
-          name: "EditPlan",
-          params: {
-            travelPlanId: route.params.travelPlanId,
-          },
-        });
-      } else {
-        router.push({ name: "CreatePlan" });
-      }
-    });
-    addBackCallback("CreateChecklist", async () => {
-      router.push({ name: "Travel" });
-    });
-    addBackCallback("EditChecklist", async () => {
-      router.push({ name: "Travel" });
-    });
-    addBackCallback("CreateExpense", async () => {
-      router.push({ name: "Travel" });
-    });
-    addBackCallback("EditExpense", async () => {
-      router.push({ name: "Travel" });
-    });
-    addBackCallback("ExpensePosition", async () => {
-      if (route.params.expenseId) {
-        router.push({
-          name: "EditExpense",
-          params: {
-            travelPlanId: route.params.expenseId,
-          },
-        });
-      } else {
-        router.push({ name: "CreateExpense" });
-      }
-    });
-    addBackCallback("RoadMap", async () => {
+    addBackCallback("ShareRoad", async () => {
       router.push({ name: "Travel" });
     });
 
@@ -381,8 +378,6 @@ export const useStore = defineStore("store", () => {
 
   return {
     now: nowRef,
-    planSelectAddress,
-    expenseSelectAddress,
 
     currentTravel,
     travels,

@@ -30,4 +30,14 @@ impl<R: Runtime> Commands<R> {
             .run_mobile_plugin("exitApp", payload)
             .map_err(Into::into)
     }
+    pub fn save_image_to_pictures(&self, payload: SaveImageRequest) -> crate::Result<UriResponse> {
+        self.0
+            .run_mobile_plugin("saveImageToPictures", payload)
+            .map_err(Into::into)
+    }
+    pub fn save_file_to_downloads(&self, payload: SaveFileRequest) -> crate::Result<UriResponse> {
+        self.0
+            .run_mobile_plugin("saveFileToDownloads", payload)
+            .map_err(Into::into)
+    }
 }

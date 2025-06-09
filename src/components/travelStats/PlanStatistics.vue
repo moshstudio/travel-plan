@@ -125,13 +125,6 @@ const toggleMapExpand = () => {
   <div class="p-4">
     <h2 class="text-2xl font-bold text-gray-900 mb-2">旅行计划统计</h2>
 
-    <button
-      @click="$router.push({ name: 'RoadMap' })"
-      class="px-2 py-1 bg-blue-500 hover:bg-blue-600 rounded-md transition-colors mb-4"
-    >
-      <span class="text-white text-sm">查看路线图</span>
-    </button>
-
     <!-- 状态统计卡片 -->
     <div class="mb-6">
       <h3 class="text-lg font-semibold text-gray-800 mb-3">计划状态</h3>
@@ -179,40 +172,6 @@ const toggleMapExpand = () => {
         >
           #{{ tag }} <span class="text-purple-600">({{ count }})</span>
         </span>
-      </div>
-    </div>
-
-    <!-- 地图视图 -->
-    <div
-      v-if="plansWithLocation.length > 0"
-      class="mb-6"
-    >
-      <div class="flex justify-between items-center mb-3">
-        <h3 class="text-lg font-semibold text-gray-800">位置分布</h3>
-        <div class="flex items-center">
-          <span class="text-sm text-gray-500 mr-2">
-            {{ plansWithLocation.length }} 个地点
-          </span>
-          <div
-            @click="toggleMapExpand"
-            class="text-sm text-blue-600 hover:text-blue-800 focus:outline-none transition-colors"
-          >
-            {{ isMapExpanded ? "▼" : "▲" }}
-          </div>
-        </div>
-      </div>
-      <div
-        class="bg-gray-50 rounded-xl overflow-hidden shadow-sm border border-gray-100 transition-all duration-300 ease-in-out"
-        :class="{
-          'h-60': !isMapExpanded,
-          'h-[80vh]': isMapExpanded,
-        }"
-      >
-        <MapView
-          v-if="mapLoaded"
-          :plans="plansWithLocation"
-          :travelId="travelId"
-        />
       </div>
     </div>
   </div>

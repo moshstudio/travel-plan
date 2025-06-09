@@ -17,4 +17,14 @@ impl<R: Runtime> Commands<R> {
     pub fn exit_app(&self, payload: EmptyRequest) -> crate::Result<EmptyResponse> {
         Ok(EmptyResponse {})
     }
+    pub fn save_image_to_pictures(&self, payload: SaveImageRequest) -> crate::Result<UriResponse> {
+        Ok(UriResponse {
+            uri: Some("".to_string()),
+        })
+    }
+    pub fn save_file_to_downloads(&self, payload: SaveFileRequest) -> crate::Result<UriResponse> {
+        Ok(UriResponse {
+            uri: Some("".to_string()),
+        })
+    }
 }

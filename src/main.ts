@@ -16,12 +16,12 @@ import createDatetime from "vue-datetime3";
 import RememberScrollDirective from "./utils/directives/rememberScroll";
 
 import "vue-datetime3/style.css";
-import "font-awesome/css/font-awesome.min.css";
+import "@fortawesome/fontawesome-free/css/all.css";
 
 const app = createApp(App);
 app
-  .use(router)
   .use(createPinia())
+  .use(router)
   .use(createDatetime())
   .use(DatePicker)
   .use(TimePicker)

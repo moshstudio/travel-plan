@@ -38,13 +38,13 @@ const travelOptions = computed(() => {
 const onClickAdd = () => {
   switch (activeTabName.value) {
     case "plan":
-      router.push({ name: "CreatePlan" });
+      router.push({ name: "PlanMap" });
       break;
     case "checklist":
-      router.push({ name: "CreateChecklist" });
+      displayStore.showChecklistCreatePopup = true;
       break;
     case "expense":
-      router.push({ name: "CreateExpense" });
+      router.push({ name: "ExpenseMap" });
       break;
     case "stats":
       router.push({ name: "stats" });

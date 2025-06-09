@@ -32,20 +32,9 @@ const routes: RouteRecordRaw[] = [
     redirect: { name: "Travel" },
     children: [
       {
-        path: "create",
-        name: "CreatePlan",
-        component: () => import("@/views/plan/CreatePlan.vue"),
-      },
-      {
-        path: "edit/:travelPlanId",
-        name: "EditPlan",
-        component: () => import("@/views/plan/EditPlan.vue"),
-        props: true,
-      },
-      {
-        path: "position/select/:travelPlanId?",
-        name: "PlanPosition",
-        component: () => import("@/components/map/PlanPositionSelect.vue"),
+        path: "map",
+        name: "PlanMap",
+        component: () => import("@/views/plan/PlanMap.vue"),
         props: true,
       },
     ],
@@ -53,38 +42,16 @@ const routes: RouteRecordRaw[] = [
   {
     path: "/checkList",
     redirect: { name: "Travel" },
-    children: [
-      {
-        path: "create",
-        name: "CreateChecklist",
-        component: () => import("@/views/checklist/CreateChecklist.vue"),
-      },
-      {
-        path: "edit/:itemId",
-        name: "EditChecklist",
-        component: () => import("@/views/checklist/EditChecklist.vue"),
-        props: true,
-      },
-    ],
+    children: [],
   },
   {
     path: "/expense",
     redirect: { name: "Travel" },
     children: [
       {
-        path: "create",
-        name: "CreateExpense",
-        component: () => import("@/views/expense/CreateExpense.vue"),
-      },
-      {
-        path: "edit/:expenseId",
-        name: "EditExpense",
-        component: () => import("@/views/expense/EditExpense.vue"),
-      },
-      {
-        path: "position/select/:expenseId?",
-        name: "ExpensePosition",
-        component: () => import("@/components/map/ExpensePositionSelect.vue"),
+        path: "map",
+        name: "ExpenseMap",
+        component: () => import("@/views/expense/ExpenseMap.vue"),
         props: true,
       },
     ],
@@ -95,8 +62,13 @@ const routes: RouteRecordRaw[] = [
     children: [
       {
         path: "road-map",
-        name: "RoadMap",
-        component: () => import("@/components/map/RoadMap.vue"),
+        children: [
+          {
+            path: "share-road",
+            name: "ShareRoad",
+            component: () => import("@/views/stats/ShareRoad.vue"),
+          },
+        ],
       },
     ],
   },

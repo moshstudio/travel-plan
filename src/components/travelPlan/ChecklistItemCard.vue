@@ -2,12 +2,8 @@
   <div
     class="checklist-item relative w-full bg-white rounded-xl shadow-sm p-4 mb-3 transition-all duration-300 border border-gray-100 active:scale-[0.98]"
     :class="{ 'bg-gray-50 opacity-80': item.isPacked }"
-    @click="handleClickCard"
-    @touchstart="startPress"
-    @touchend="endPress"
     :style="{
-      transform: `scale(${pressScale})`,
-      'border-left': `4px solid ${importanceColor[item.importance]}`,
+      'border-left': `4px solid ${importanceColor[item.priority]}`,
     }"
   >
     <!-- 左侧复选框和主要内容 -->
@@ -45,7 +41,6 @@
           </van-button>
         </div>
 
-        <!-- 分类和数量 -->
         <div class="item-meta flex items-center mb-1.5">
           <van-tag
             class="category-tag mr-2 text-xs rounded"
@@ -60,7 +55,6 @@
           </span>
         </div>
 
-        <!-- 备注 -->
         <div
           v-if="item.notes"
           class="item-notes flex items-center text-sm text-gray-500"
@@ -74,7 +68,79 @@
         </div>
       </div>
     </div>
-    <!-- 操作菜单 -->
+    <van-popup
+      v-model:show="showChecklistEditPopup"
+      position="bottom"
+      teleport="body"
+      closeable
+      round
+      destroy-on-close
+    >
+      <div class="flex flex-col gap-2 p-6 pb-8 shadow">
+        <h1 class="text-center">更新物品</h1>
+        <div class="flex items-center justify-start gap-2">
+          <div class="text-nowrap text-sm">名称</div>
+          <van-field
+            v-model="editPopupInfos.name"
+            placeholder="请输入物品名"
+            class="!p-0"
+          />
+        </div>
+        <van-divider></van-divider>
+        <div class="flex items-start justify-start gap-2 w-full">
+          <div class="text-nowrap text-sm">标签</div>
+          <ChecklistTagSelector
+            v-model="editPopupInfos.tag"
+          ></ChecklistTagSelector>
+        </div>
+        <van-divider></van-divider>
+        <div class="flex items-center justify-start gap-2">
+          <p class="text-sm text-nowrap">数量</p>
+          <div class="flex-grow flex items-center justify-end w-full gap-2">
+            <van-stepper
+              v-model="editPopupInfos.quantity"
+              :min="1"
+              :max="9999"
+              :step="1"
+              input-width="50px"
+              button-size="20px"
+            />
+          </div>
+        </div>
+        <van-divider></van-divider>
+        <TrippleToggle
+          v-model="editPopupInfos.priority"
+          :label-style="{ color: 'unset', fontSize: '14px' }"
+        ></TrippleToggle>
+        <van-divider></van-divider>
+        <div class="flex items-center justify-start gap-2">
+          <p class="text-sm text-nowrap">打包状态</p>
+          <div class="flex-grow flex items-center justify-end w-full gap-2">
+            <van-switch
+              v-model="editPopupInfos.isPacked"
+              size="24"
+            />
+          </div>
+        </div>
+        <van-divider></van-divider>
+        <DescribeInput
+          :describe="editPopupInfos.notes || ''"
+          @change="(v) => (editPopupInfos.notes = v)"
+          label="备注"
+          :label-style="{ color: 'unset', fontSize: '14px' }"
+        ></DescribeInput>
+        <van-divider></van-divider>
+        <div class="flex items-center justify-end">
+          <van-button
+            size="small"
+            type="success"
+            @click="onEditPopupSubmit"
+          >
+            更新物品
+          </van-button>
+        </div>
+      </div>
+    </van-popup>
     <van-action-sheet
       teleport="body"
       v-model:show="showActionSheet"
@@ -89,11 +155,14 @@
 
 <script setup lang="ts">
 import { TravelChecklistType } from "@/data/checklist";
-import router from "@/router";
 import { useStore } from "@/store";
 import _ from "lodash";
-import { showConfirmDialog } from "vant";
-import { computed, ref } from "vue";
+import { showConfirmDialog, showSuccessToast } from "vant";
+import { computed, reactive, ref, toRaw } from "vue";
+import { getPlanPriorityColor } from "@/utils/planUtils";
+import ChecklistTagSelector from "@/components/checklist/ChecklistTagSelector.vue";
+import TrippleToggle from "@/components/plan/TrippleToggle.vue";
+import DescribeInput from "@/components/plan/DescribeInput.vue";
 
 const props = defineProps<{
   item: TravelChecklistType;
@@ -102,9 +171,9 @@ const props = defineProps<{
 const store = useStore();
 
 const importanceColor = {
-  low: "#1989fa",
-  medium: "#ff976a",
-  high: "#ee0a24",
+  low: getPlanPriorityColor("low"),
+  medium: getPlanPriorityColor("medium"),
+  high: getPlanPriorityColor("high"),
 };
 
 const isPacked = computed({
@@ -116,37 +185,62 @@ const isPacked = computed({
 });
 
 // 操作菜单相关
+const showChecklistEditPopup = ref(false);
+const editPopupInfos = reactive<
+  Omit<TravelChecklistType, "id" | "itemId" | "travelId">
+>({
+  name: "",
+  tag: "",
+  isPacked: false,
+  quantity: 1,
+  priority: "medium",
+  notes: "",
+  createdAt: new Date(),
+  updatedAt: new Date(),
+});
+const onOpenEditPopup = () => {
+  editPopupInfos.name = props.item.name;
+  editPopupInfos.tag = props.item.tag;
+  editPopupInfos.isPacked = props.item.isPacked;
+  editPopupInfos.quantity = props.item.quantity;
+  editPopupInfos.priority = props.item.priority;
+  editPopupInfos.notes = props.item.notes;
+  showChecklistEditPopup.value = true;
+};
+
 const showActionSheet = ref(false);
 const actionSheetActions = computed(() => {
   return _.filter(
     [
       { name: "编辑", value: "edit", color: "green", icon: "edit" },
-      { name: "设为高优先级", value: "high", color: "#ee0a24", icon: "fire" },
+      {
+        name: "设为高优先级",
+        value: "high",
+        color: getPlanPriorityColor("high"),
+        icon: "fire",
+      },
       {
         name: "设为中优先级",
         value: "medium",
-        color: "#ff976a",
+        color: getPlanPriorityColor("medium"),
         icon: "warning",
       },
       {
         name: "设为低优先级",
         value: "low",
-        color: "#1989fa",
+        color: getPlanPriorityColor("low"),
         icon: "arrow-down",
       },
       { name: "删除", value: "delete", color: "red", icon: "delete" },
     ],
-    (action) => action.value !== props.item.importance
+    (action) => action.value !== props.item.priority
   );
 });
 
 const onActionSelect = (action: { value: string }) => {
   switch (action.value) {
     case "edit":
-      router.push({
-        name: "EditChecklist",
-        params: { itemId: props.item.itemId },
-      });
+      onOpenEditPopup();
       break;
     case "delete":
       showConfirmDialog({
@@ -161,32 +255,34 @@ const onActionSelect = (action: { value: string }) => {
     case "high":
     case "medium":
     case "low":
-      props.item.importance = action.value;
+      props.item.priority = action.value;
       store.updateTravelChecklist(props.item);
       break;
   }
 };
 
-// 触摸反馈效果
-const pressScale = ref(1);
-const isPressing = ref(false);
-
-const startPress = () => {
-  isPressing.value = true;
-  pressScale.value = 0.98;
-};
-
-const endPress = () => {
-  isPressing.value = false;
-  pressScale.value = 1;
-};
-
-const handleClickCard = () => {
-  // handleCheckChange(!isPacked.value);
-};
-
 const handleCheckChange = (checked: boolean) => {
   isPacked.value = checked;
+};
+
+const onEditPopupSubmit = async () => {
+  const now = new Date();
+  const item: TravelChecklistType = toRaw({
+    id: props.item.id,
+    itemId: props.item.itemId,
+    name: editPopupInfos.name,
+    travelId: props.item.travelId,
+    tag: editPopupInfos.tag,
+    isPacked: editPopupInfos.isPacked,
+    quantity: editPopupInfos.quantity,
+    priority: editPopupInfos.priority,
+    notes: editPopupInfos.notes,
+    createdAt: editPopupInfos.createdAt,
+    updatedAt: now,
+  });
+  await store.updateTravelChecklist(item);
+  showSuccessToast("清单项更新成功");
+  showChecklistEditPopup.value = false;
 };
 </script>
 
@@ -210,5 +306,9 @@ const handleCheckChange = (checked: boolean) => {
 .checklist-item-leave-to {
   opacity: 0;
   transform: translateY(20px);
+}
+:deep(.van-divider) {
+  line-height: 2px;
+  margin: 0;
 }
 </style>

@@ -1,21 +1,42 @@
 <script setup lang="ts">
-import { ref, computed } from "vue";
+import { ref, computed, reactive, toRaw } from "vue";
 import ChecklistItemCard from "@/components/travelPlan/ChecklistItemCard.vue";
+import ChecklistTagSelector from "@/components/checklist/ChecklistTagSelector.vue";
+import TrippleToggle from "@/components/plan/TrippleToggle.vue";
+import DescribeInput from "@/components/plan/DescribeInput.vue";
 import { useStore } from "@/store";
 import { storeToRefs } from "pinia";
 import { TravelChecklistType } from "@/data/checklist";
+import { useDisplayStore } from "@/store/displayStore";
+import { showFailToast, showSuccessToast } from "vant";
+import router from "@/router";
 
 const store = useStore();
-const { travelChecklists } = storeToRefs(store);
+const displayStore = useDisplayStore();
+const { currentTravel, travelChecklists } = storeToRefs(store);
+const { showChecklistCreatePopup, checklistGroupingMode: groupingMode } =
+  storeToRefs(displayStore);
 
 // Grouping options
 const groupingOptions = [
   { value: "tag", name: "标签" },
-  { value: "importance", name: "优先级" },
+  { value: "priority", name: "优先级" },
   { value: "packed", name: "打包" },
 ];
-const groupingMode = ref("tag");
 const showGroupMenu = ref(false);
+
+const createPopupInfos = reactive<
+  Omit<TravelChecklistType, "id" | "itemId" | "travelId">
+>({
+  name: "",
+  tag: "",
+  isPacked: false,
+  quantity: 1,
+  priority: "medium",
+  notes: "",
+  createdAt: new Date(),
+  updatedAt: new Date(),
+});
 
 // Group items by selected mode
 const groupedChecklist = computed(() => {
@@ -29,8 +50,8 @@ const groupedChecklist = computed(() => {
       case "tag":
         groupKey = item.tag || "未分类";
         break;
-      case "importance":
-        groupKey = item.importance || "medium";
+      case "priority":
+        groupKey = item.priority || "medium";
         break;
       case "packed":
         groupKey = item.isPacked ? "已打包" : "未打包";
@@ -48,7 +69,7 @@ const groupedChecklist = computed(() => {
   const groupKeys = Object.keys(grouped);
 
   switch (groupingMode.value) {
-    case "importance":
+    case "priority":
       ["high", "medium", "low"].forEach((key) => {
         if (groupKeys.includes(key)) {
           sortedGroups[key] = grouped[key];
@@ -74,7 +95,7 @@ const groupedChecklist = computed(() => {
 // Get all categories with proper display names
 const categories = computed(() => {
   return Object.keys(groupedChecklist.value).map((key) => {
-    if (groupingMode.value === "importance") {
+    if (groupingMode.value === "priority") {
       return {
         key,
         display:
@@ -108,6 +129,29 @@ const categories = computed(() => {
 async function updatePackaged(item: TravelChecklistType, packed: boolean) {
   item.isPacked = packed;
   await store.updateTravelChecklist(item);
+}
+async function addChecklist() {
+  if (!currentTravel.value) {
+    showFailToast("请先创建旅行");
+    router.push({ name: "CreateTravel" });
+    return;
+  }
+
+  const now = new Date();
+  const checklistItem: Omit<TravelChecklistType, "id" | "itemId"> = toRaw({
+    name: createPopupInfos.name,
+    travelId: currentTravel.value.travelId,
+    tag: createPopupInfos.tag,
+    isPacked: createPopupInfos.isPacked,
+    quantity: createPopupInfos.quantity,
+    priority: createPopupInfos.priority,
+    notes: createPopupInfos.notes,
+    createdAt: now,
+    updatedAt: now,
+  });
+  await store.addChecklistItem(checklistItem);
+  showSuccessToast("清单项添加成功");
+  showChecklistCreatePopup.value = false;
 }
 </script>
 
@@ -201,6 +245,78 @@ async function updatePackaged(item: TravelChecklistType, packed: boolean) {
       </transition-group>
       <div class="shrink-0 h-[220px]"></div>
     </van-list>
+    <van-popup
+      v-model:show="showChecklistCreatePopup"
+      position="bottom"
+      teleport="body"
+      closeable
+      round
+    >
+      <div class="flex flex-col gap-2 p-6 pb-8 shadow">
+        <h1 class="text-center">新建物品</h1>
+        <div class="flex items-center justify-start gap-2">
+          <div class="text-nowrap text-sm">名称</div>
+          <van-field
+            v-model="createPopupInfos.name"
+            placeholder="请输入物品名"
+            class="!p-0"
+          />
+        </div>
+        <van-divider></van-divider>
+        <div class="flex items-start justify-start gap-2 w-full">
+          <div class="text-nowrap text-sm">标签</div>
+          <ChecklistTagSelector
+            v-model="createPopupInfos.tag"
+          ></ChecklistTagSelector>
+        </div>
+        <van-divider></van-divider>
+        <div class="flex items-center justify-start gap-2">
+          <p class="text-sm text-nowrap">数量</p>
+          <div class="flex-grow flex items-center justify-end w-full gap-2">
+            <van-stepper
+              v-model="createPopupInfos.quantity"
+              :min="1"
+              :max="1000"
+              :step="0.5"
+              input-width="50px"
+              button-size="20px"
+            />
+          </div>
+        </div>
+        <van-divider></van-divider>
+        <TrippleToggle
+          v-model="createPopupInfos.priority"
+          :label-style="{ color: 'unset', fontSize: '14px' }"
+        ></TrippleToggle>
+        <van-divider></van-divider>
+        <div class="flex items-center justify-start gap-2">
+          <p class="text-sm text-nowrap">打包状态</p>
+          <div class="flex-grow flex items-center justify-end w-full gap-2">
+            <van-switch
+              v-model="createPopupInfos.isPacked"
+              size="24"
+            />
+          </div>
+        </div>
+        <van-divider></van-divider>
+        <DescribeInput
+          :describe="createPopupInfos.notes || ''"
+          @change="(v) => (createPopupInfos.notes = v)"
+          label="备注"
+          :label-style="{ color: 'unset', fontSize: '14px' }"
+        ></DescribeInput>
+        <van-divider></van-divider>
+        <div class="flex items-center justify-end">
+          <van-button
+            size="small"
+            type="primary"
+            @click="addChecklist"
+          >
+            添加物品
+          </van-button>
+        </div>
+      </div>
+    </van-popup>
   </div>
 </template>
 
@@ -354,5 +470,9 @@ async function updatePackaged(item: TravelChecklistType, packed: boolean) {
 .ChecklistItemCard:not(.packed-item):hover {
   transform: translateY(-2px);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+:deep(.van-divider) {
+  line-height: 2px;
+  margin: 0;
 }
 </style>

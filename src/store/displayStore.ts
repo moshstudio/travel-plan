@@ -1,6 +1,6 @@
 import { useStorage } from "@vueuse/core";
 import { defineStore } from "pinia";
-import { computed } from "vue";
+import { computed, ref } from "vue";
 import { type as osType } from "@tauri-apps/plugin-os";
 
 export const useDisplayStore = defineStore("display", () => {
@@ -13,10 +13,19 @@ export const useDisplayStore = defineStore("display", () => {
     if (isWeb.value) return false;
     return osType() === "android";
   });
+
+  const showChecklistCreatePopup = ref(false);
+  const showExpenseCreatePopup = ref(false);
+  const checklistGroupingMode = useStorage("checklistGroupingMode", "tag");
+  const expenseGroupingMode = useStorage("expenseGroupingMode", "date");
   return {
     isDark,
     activeTabName,
     isWeb,
     isAndroid,
+    showChecklistCreatePopup,
+    showExpenseCreatePopup,
+    checklistGroupingMode,
+    expenseGroupingMode,
   };
 });

@@ -40,12 +40,12 @@ const tagStats = computed(() => {
 // 按重要性统计
 const importanceStats = computed(() => {
   return props.items.reduce((acc, item) => {
-    if (!acc[item.importance]) {
-      acc[item.importance] = { total: 0, completed: 0 };
+    if (!acc[item.priority]) {
+      acc[item.priority] = { total: 0, completed: 0 };
     }
 
-    acc[item.importance].total++;
-    if (item.isPacked) acc[item.importance].completed++;
+    acc[item.priority].total++;
+    if (item.isPacked) acc[item.priority].completed++;
 
     return acc;
   }, {} as Record<string, { total: number; completed: number }>);

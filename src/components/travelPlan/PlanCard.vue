@@ -25,7 +25,7 @@
         <h3
           class="plan-title flex-1 text-base font-semibold text-gray-800 truncate mr-2"
         >
-          {{ plan.title }}
+          {{ plan.title || plan.location.name }}
         </h3>
         <div class="header-right flex items-center gap-1.5">
           <div
@@ -72,7 +72,7 @@
           name="location-o"
           class="location-icon mr-1.5 text-gray-400"
         />
-        <span class="location-text">{{ plan.location.name }}</span>
+        <span class="location-text">{{ plan.location.address }}</span>
       </div>
 
       <!-- 描述信息 -->
@@ -132,11 +132,6 @@
               <span class="font-bold">{{ endTime.date }}</span>
               {{ endTime.time }}
             </span>
-            <span
-              v-if="plan.isAllDay"
-              class="all-day-badge text-xs px-1.5 py-0.5 bg-gray-100 text-gray-500 rounded ml-1.5"
-              >全天</span
-            >
           </div>
         </div>
       </div>
@@ -218,13 +213,13 @@ const markSheetActions = computed(() => {
       actions.push({
         name: "编辑",
         icon: "edit",
-        color: "green",
+        color: "var(--plan-in-progress)",
         callback: handleCardClick,
       });
       actions.push({
         name: "标记完成",
         icon: "success",
-        color: "#10B981",
+        color: "var(--plan-completed)",
         callback: () => {
           props.plan.status = TravelPlanStatus.completed;
           store.updateTravelPlan(props.plan);
@@ -233,7 +228,7 @@ const markSheetActions = computed(() => {
       actions.push({
         name: "延后一天",
         icon: "clock-o",
-        color: "#1E90FF",
+        color: "var(--plan-in-progress)",
         callback: () => {
           props.plan.startDateTime += 24 * 60 * 60 * 1000;
           props.plan.endDateTime += 24 * 60 * 60 * 1000;
@@ -244,7 +239,7 @@ const markSheetActions = computed(() => {
     actions.push({
       name: "取消计划",
       icon: "delete-o",
-      color: "#FF8C00",
+      color: "var(--plan-cancelled)",
       callback: () => {
         props.plan.status = TravelPlanStatus.cancelled;
         store.updateTravelPlan(props.plan);
@@ -253,7 +248,7 @@ const markSheetActions = computed(() => {
     actions.push({
       name: "删除计划",
       icon: "fail",
-      color: "red",
+      color: "var(--plan-expired)",
       callback: () => {
         showConfirmDialog({
           title: "确定要删除此计划吗？",
@@ -275,25 +270,25 @@ const statusClasses = computed(() => {
 
 const accentClasses = computed(() => {
   return {
-    planned: "bg-gray-400",
-    upcoming: "bg-yellow-400",
-    "in-progress": "bg-green-400",
-    completed: "bg-blue-400",
-    expired: "bg-red-400",
-    cancelled: "bg-gray-400",
-    deleted: "bg-gray-400",
+    planned: "bg-plan-planned",
+    upcoming: "bg-plan-upcoming",
+    "in-progress": "bg-plan-in-progress",
+    completed: "bg-plan-completed",
+    expired: "bg-plan-expired",
+    cancelled: "bg-plan-cancelled",
+    deleted: "bg-plan-deleted",
   }[status.value];
 });
 
 const statusBadgeClasses = computed(() => {
   return {
-    planned: "bg-gray-100 text-gray-800",
-    upcoming: "bg-yellow-100 text-yellow-800",
-    "in-progress": "bg-green-100 text-green-800",
-    completed: "bg-blue-100 text-blue-800",
-    expired: "bg-red-100 text-red-800",
-    cancelled: "bg-gray-200 text-gray-700",
-    deleted: "bg-gray-100 text-gray-800",
+    planned: "text-plan-planned",
+    upcoming: "text-plan-upcoming",
+    "in-progress": "text-plan-in-progress",
+    completed: "text-plan-completed",
+    expired: "text-plan-expired",
+    cancelled: "text-plan-cancelled",
+    deleted: "text-plan-deleted",
   }[status.value];
 });
 
@@ -311,9 +306,9 @@ const statusText = computed(() => {
 
 const priorityClasses = computed(() => {
   return {
-    low: "bg-blue-100 text-blue-800",
-    high: "bg-red-100 text-red-800",
-    medium: "",
+    low: "text-plan-priority-low bg-plan-priority-low/10",
+    high: "text-plan-priority-medium bg-plan-priority-medium/10",
+    medium: "text-plan-priority-high bg-plan-priority-high/10",
   }[props.plan.priority];
 });
 
@@ -341,9 +336,9 @@ const statusHint = computed(() => {
 const hintClasses = computed(() => {
   switch (status.value) {
     case "cancelled":
-      return "text-red-500 bg-red-50";
+      return "text-plan-cancelled bg-red-50";
     case "upcoming":
-      return "text-yellow-600 bg-yellow-50";
+      return "text-plan-upcoming bg-yellow-50";
     default:
       return "text-gray-600 bg-gray-50";
   }
@@ -390,8 +385,8 @@ const timeUntilStart = computed(() => {
 
 const handleCardClick = () => {
   router.push({
-    name: "EditPlan",
-    params: {
+    name: "PlanMap",
+    query: {
       travelPlanId: props.plan.travelPlanId,
     },
   });

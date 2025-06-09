@@ -35,7 +35,11 @@ impl<R: Runtime, T: Manager<R>> crate::CommandsExt<R> for T {
 /// Initializes the plugin.
 pub fn init<R: Runtime>() -> TauriPlugin<R> {
     Builder::new("commands")
-        .invoke_handler(tauri::generate_handler![commands::exit_app])
+        .invoke_handler(tauri::generate_handler![
+            commands::exit_app,
+            commands::save_image_to_pictures,
+            commands::save_file_to_downloads
+        ])
         .setup(|app, api| {
             #[cfg(mobile)]
             let commands = mobile::init(app, api)?;
