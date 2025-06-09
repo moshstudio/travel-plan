@@ -53,6 +53,8 @@ const currentExpense = ref<TravelExpenseType>();
 const mapContainer = ref<HTMLElement>();
 const map = ref<Map>();
 const pointLayer = ref<VectorLayer>();
+const popupOverlays = ref<Overlay[]>([]);
+const showPopups = ref(true);
 
 const searchValue = ref("");
 const selectedAddress = ref<AddressType>();
@@ -190,7 +192,17 @@ const showPosition = async (
 const onSearch = async (value: string) => {
   if (!value) return;
   addressOptions.value = [];
-  addressOptions.value = await tdtSearch(value);
+  const center = map.value?.getView().getCenter();
+
+  if (center) {
+    addressOptions.value = await tdtSearch(
+      value,
+      "10000",
+      `${toLonLat(center)[0].toFixed(3)},${toLonLat(center)[1].toFixed(3)}`
+    );
+  } else {
+    addressOptions.value = await tdtSearch(value);
+  }
   showAddressOptions.value = true;
   searchValue.value = value;
 };
@@ -248,13 +260,16 @@ async function onCreateOrUpdateExpense() {
       createdAt: new Date(),
       updatedAt: new Date(),
     };
+    manualClearOverlays();
+    showPopups.value = false;
     const addedExpense = await store.addTravelExpense(expenseData);
     if (addedExpense) {
       showSuccessToast("花费项添加成功");
       expenseId.value = addedExpense.expenseId;
       currentExpense.value = addedExpense;
       showSelectedAddressInfo.value = false;
-      await sleep(1000);
+      await sleep(500);
+      showPopups.value = true;
       loadExpansePositions();
     }
   } else {
@@ -276,10 +291,13 @@ async function onCreateOrUpdateExpense() {
       createdAt: new Date(),
       updatedAt: new Date(),
     };
+    manualClearOverlays();
+    showPopups.value = false;
     await store.updateTravelExpense(expenseData);
     showSuccessToast("花费项更新成功");
     showSelectedAddressInfo.value = false;
-    await sleep(1000);
+    await sleep(500);
+    showPopups.value = true;
     loadExpansePositions();
   }
 }
@@ -296,10 +314,13 @@ async function onDeleteExpense() {
     cancelButtonText: "取消",
   }).then(async () => {
     if (!currentExpense.value) return;
+    manualClearOverlays();
+    showPopups.value = false;
     await store.deleteTravelExpense(currentExpense.value);
     showSuccessToast("花费删除成功");
     showSelectedAddressInfo.value = false;
-    await sleep(1000);
+    await sleep(500);
+    showPopups.value = true;
     loadExpansePositions();
   });
 }
@@ -353,6 +374,13 @@ const loadExpansePositions = async () => {
   // }
 };
 
+const manualClearOverlays = () => {
+  popupOverlays.value.forEach((overlay) => {
+    map.value?.removeOverlay(overlay as Overlay);
+  });
+  popupOverlays.value = [];
+};
+
 const setOverlay = async (overlay: Overlay, expense: TravelExpenseType) => {
   try {
     await pWaitFor(() => map.value !== undefined, {
@@ -360,6 +388,9 @@ const setOverlay = async (overlay: Overlay, expense: TravelExpenseType) => {
       timeout: 3000,
     });
     await sleep(200);
+    if (!popupOverlays.value.includes(overlay)) {
+      popupOverlays.value.push(overlay);
+    }
     map.value?.addOverlay(overlay);
     overlay.setPosition(
       fromLonLat([
@@ -430,28 +461,30 @@ onActivated(async () => {
       id="selectExpensePositionMap"
       class="w-full h-full"
     ></div>
-    <OlPopup
-      v-for="(expense, index) in travelExpenses"
-      :key="expense.expenseId"
-      :position="expense.location.coordinates"
-      :visible="true"
-      :id="expense.expenseId"
-      :title="expense.location.name"
-      :description="
-        '￥' +
-        expense.amount +
-        (expense.description ? ' / ' + expense.description : '')
-      "
-      :repeat-offset="40"
-      icon="iconamoon:location-duotone"
-      icon-color="red"
-      :closable="false"
-      :clickable="true"
-      :shadow-color="getExpensePayMethodColor(expense.paymentMethod)"
-      :border-color="getExpensePayMethodColor(expense.paymentMethod)"
-      @overlay-created="(o) => setOverlay(o, expense)"
-      @click="() => handlePopupClick(expense)"
-    ></OlPopup>
+    <template v-if="showPopups">
+      <OlPopup
+        v-for="(expense, index) in travelExpenses"
+        :key="expense.expenseId"
+        :position="expense.location.coordinates"
+        :visible="true"
+        :id="expense.expenseId"
+        :title="expense.location.name"
+        :description="
+          '￥' +
+          expense.amount +
+          (expense.description ? ' / ' + expense.description : '')
+        "
+        :repeat-offset="40"
+        icon="iconamoon:location-duotone"
+        icon-color="red"
+        :closable="false"
+        :clickable="true"
+        :shadow-color="getExpensePayMethodColor(expense.paymentMethod)"
+        :border-color="getExpensePayMethodColor(expense.paymentMethod)"
+        @overlay-created="(o) => setOverlay(o, expense)"
+        @click="() => handlePopupClick(expense)"
+      ></OlPopup>
+    </template>
     <LocationButton
       :map="map"
       @position="(p) => showPosition(p)"
@@ -476,9 +509,11 @@ onActivated(async () => {
       :visible="selectedAddress !== undefined"
     ></Placemark>
 
-    <div class="absolute left-4 top-4 right-4 flex gap-0 rounded-2xl shadow">
+    <div
+      class="absolute left-4 top-4 right-4 flex gap-0 rounded-2xl shadow z-[1001]"
+    >
       <van-search
-        v-model:model-value="searchValue"
+        v-model="searchValue"
         @update:model-value="debounceOnSearch"
         class="w-full"
         placeholder="搜索地点"
@@ -510,13 +545,14 @@ onActivated(async () => {
     </div>
     <div
       v-if="showAddressOptions"
-      class="absolute top-[50px] left-4 right-4 max-h-[260px] overflow-auto z-1001 thin-scrollbar bf-[var(--van-background)]"
+      class="absolute top-[50px] left-4 right-4 max-h-[260px] shadow-lg overflow-auto z-[1001] thin-scrollbar bf-[var(--van-background)]"
     >
       <van-cell-group class="px-4">
         <van-cell
           v-for="(address, index) in addressOptions"
           :key="index"
           :title="address.name"
+          :label="address.address"
           @click="selectAddressOption(address)"
           clickable
         >
@@ -528,6 +564,7 @@ onActivated(async () => {
       v-model:show="showSelectedAddressInfo"
       position="bottom"
       teleport="body"
+      z-index="1000"
       :overlay="false"
       closeable
       round

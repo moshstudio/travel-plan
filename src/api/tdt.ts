@@ -126,7 +126,11 @@ export async function tdtXYZPoxyCIAUrl() {
   }
 }
 
-export async function tdtSearch(keyword: string): Promise<AddressType[]> {
+export async function tdtSearch(
+  keyword: string,
+  queryRadius?: string,
+  pointLonlat?: string
+): Promise<AddressType[]> {
   const url = tdtSearchUrl.replace("{keyword}", keyword);
   try {
     const displayStore = useDisplayStore();
@@ -147,17 +151,28 @@ export async function tdtSearch(keyword: string): Promise<AddressType[]> {
     }
     const response = await _fetch(url, options);
     const data = await response.json();
-    return data.suggests?.map((item: any) => {
-      const [lon, lat] = item.lonlat.split(",");
-      return {
-        name: item.name,
-        address: item.address,
-        coordinates: {
-          lng: Number(lon),
-          lat: Number(lat),
-        },
-      } as AddressType;
-    });
+    const addressList =
+      data.suggests?.map((item: any) => {
+        const [lon, lat] = item.lonlat.split(",");
+        return {
+          name: item.name,
+          address: item.address,
+          coordinates: {
+            lng: Number(lon),
+            lat: Number(lat),
+          },
+        } as AddressType;
+      }) || [];
+    if (queryRadius && pointLonlat) {
+      const viewAddressList = await tdtViewSearch(
+        keyword,
+        queryRadius,
+        pointLonlat
+      );
+      return [...viewAddressList, ...addressList];
+    } else {
+      return addressList;
+    }
   } catch (error) {
     console.error("tdtSearch error:", error);
     return [];
@@ -173,7 +188,6 @@ export async function tdtViewSearch(
     .replace("{keyword}", keyword)
     .replace("{queryRadius}", queryRadius)
     .replace("{pointLonlat}", pointLonlat);
-
   try {
     const displayStore = useDisplayStore();
     let _fetch = window.fetch;
@@ -193,17 +207,19 @@ export async function tdtViewSearch(
     }
     const response = await _fetch(url, options);
     const data = await response.json();
-    return data.pois?.map((item: any) => {
-      const [lon, lat] = item.lonlat.split(",");
-      return {
-        name: item.name,
-        address: item.address,
-        coordinates: {
-          lng: Number(lon),
-          lat: Number(lat),
-        },
-      } as AddressType;
-    });
+    return (
+      data.pois?.map((item: any) => {
+        const [lon, lat] = item.lonlat.split(",");
+        return {
+          name: item.name,
+          address: item.address,
+          coordinates: {
+            lng: Number(lon),
+            lat: Number(lat),
+          },
+        } as AddressType;
+      }) || []
+    );
   } catch (error) {
     console.error("tdtSearch error:", error);
     return [];

@@ -67,6 +67,24 @@ export const useStore = defineStore("store", () => {
   const deleteTravel = async (travel: TravelType) => {
     // 删除旅行
     await db.travels.delete(travel.id);
+    const planKeysToDelete = await db.travelPlans
+      .where("travelId")
+      .equals(travel.travelId)
+      .primaryKeys();
+    await db.travelPlans.bulkDelete(planKeysToDelete);
+
+    const checklistKeysToDelete = await db.travelChecklists
+      .where("travelId")
+      .equals(travel.travelId)
+      .primaryKeys();
+    await db.travelChecklists.bulkDelete(checklistKeysToDelete);
+
+    const expenseKeysToDelete = await db.travelExpenses
+      .where("travelId")
+      .equals(travel.travelId)
+      .primaryKeys();
+    await db.travelExpenses.bulkDelete(expenseKeysToDelete);
+
     if (travel.id === currentTravel.value?.id) {
       if (travels.value?.length) {
         await switchTravel(travels.value[0]);

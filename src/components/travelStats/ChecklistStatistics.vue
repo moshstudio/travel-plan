@@ -75,7 +75,9 @@ const getImportantanceText = (importance: string) => {
     <h2 class="text-2xl font-bold text-gray-800 mb-6">旅行清单统计</h2>
 
     <!-- 完成情况卡片 -->
-    <div class="bg-white rounded-xl shadow-sm p-5 mb-6">
+    <div
+      class="bg-white rounded-xl shadow-sm p-5 mb-6 active:scale-[0.98] transform-all duration-300"
+    >
       <h3 class="text-lg font-semibold text-gray-800 mb-3">完成进度</h3>
       <div class="flex items-center justify-between mb-2">
         <span class="text-gray-600 text-sm"
@@ -103,7 +105,7 @@ const getImportantanceText = (importance: string) => {
 
     <!-- 分类统计卡片 -->
     <div
-      class="bg-white rounded-xl shadow-sm p-5 mb-6"
+      class="bg-white rounded-xl shadow-sm p-5 mb-6 active:scale-[0.98] transform-all duration-300"
       v-if="tagStats.length > 0"
     >
       <h3 class="text-lg font-semibold text-gray-800 mb-4">分类统计</h3>
@@ -132,7 +134,7 @@ const getImportantanceText = (importance: string) => {
 
     <!-- 重要性统计卡片 -->
     <div
-      class="bg-white rounded-xl shadow-sm p-5"
+      class="bg-white rounded-xl shadow-sm p-5 active:scale-[0.98] transform-all duration-300"
       v-if="Object.keys(importanceStats).length > 0"
     >
       <h3 class="text-lg font-semibold text-gray-800 mb-4">优先级统计</h3>
@@ -171,20 +173,6 @@ const getImportantanceText = (importance: string) => {
 </template>
 
 <style scoped>
-/* 添加一些动画效果 */
-.bg-gradient-to-r {
-  transition: width 0.5s ease-in-out;
-}
-
-/* 卡片悬停效果 */
-.bg-white {
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
-}
-
-.bg-white:active {
-  transform: scale(0.98);
-}
-
 /* 圆点颜色定义 */
 .bg-red-500 {
   background-color: #ef4444;

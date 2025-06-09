@@ -75,6 +75,8 @@ const mapContainer = ref<HTMLElement>();
 const map = ref<Map>();
 const lineLayer = ref<VectorLayer>();
 const pointLayer = ref<VectorLayer>();
+const popupOverlays = ref<Overlay[]>([]);
+const showPopups = ref(true);
 const routeDrawers = ref<RouteDrawer[]>([]);
 
 const searchValue = ref("");
@@ -202,7 +204,18 @@ const showPosition = async (coordinate: Coordinate, plan?: TravelPlanType) => {
 const onSearch = async (value: string) => {
   if (!value) return;
   addressOptions.value = [];
-  addressOptions.value = await tdtSearch(value);
+  const center = map.value?.getView().getCenter();
+
+  if (center) {
+    addressOptions.value = await tdtSearch(
+      value,
+      "10000",
+      `${toLonLat(center)[0].toFixed(3)},${toLonLat(center)[1].toFixed(3)}`
+    );
+  } else {
+    addressOptions.value = await tdtSearch(value);
+  }
+
   showAddressOptions.value = true;
   searchValue.value = value;
 };
@@ -263,13 +276,18 @@ async function onCreatePlan() {
       createdAt: Date.now(),
       updatedAt: Date.now(),
     };
+    showSelectedAddressInfo.value = false;
+    manualClearOverlays();
+    showPopups.value = false;
     const addedPlan = await store.addTravelPlan(planData);
     if (addedPlan) {
       showSuccessToast("计划创建成功");
       travelPlanId.value = addedPlan.travelPlanId;
       selectedPlan.value = addedPlan;
+      describe.value = "";
       showSelectedAddressInfo.value = false;
-      await sleep(1000);
+      await sleep(500);
+      showPopups.value = true;
       loadPlanPositions();
     }
   } else {
@@ -292,10 +310,14 @@ async function onCreatePlan() {
       createdAt: Date.now(),
       updatedAt: Date.now(),
     };
+    manualClearOverlays();
+    showPopups.value = false;
     await store.updateTravelPlan(planData);
     showSuccessToast("计划更新成功");
     showSelectedAddressInfo.value = false;
-    await sleep(1000);
+    describe.value = "";
+    await sleep(500);
+    showPopups.value = true;
     loadPlanPositions();
   }
 }
@@ -311,16 +333,20 @@ async function onDeletePlan() {
     cancelButtonText: "取消",
   }).then(async () => {
     if (!selectedPlan.value) return;
+    manualClearOverlays();
+    showPopups.value = false;
     await store.deleteTravelPlan(selectedPlan.value);
     showSuccessToast("计划删除成功");
     showSelectedAddressInfo.value = false;
     await sleep(1000);
+    showPopups.value = true;
     loadPlanPositions();
   });
 }
 
-const loadPlanPositions = async () => {
+const loadPlanPositions = async (keepPosition = true) => {
   if (!map.value) return;
+  const originCenter = map.value?.getView().getCenter();
   if (pointLayer.value) {
     pointLayer.value.getSource()?.clear();
   }
@@ -360,8 +386,6 @@ const loadPlanPositions = async () => {
       drivePath.path.routelatlon.length > 10
         ? simplifyLineString(drivePath.path.routelatlon)
         : drivePath.path.routelatlon;
-    console.log(drivePath.path.routelatlon);
-
     if (!map.value || !lineLayer.value) return;
     const routeDraw = new RouteDrawer({
       map: map.value,
@@ -401,6 +425,21 @@ const loadPlanPositions = async () => {
     features.push(feature);
   });
   pointLayer.value?.getSource()?.addFeatures(features);
+  if (keepPosition && originCenter) {
+    map.value?.setView(
+      new View({
+        center: originCenter,
+        zoom: map.value?.getView()?.getZoom() || 14,
+      })
+    );
+  }
+};
+
+const manualClearOverlays = () => {
+  popupOverlays.value.forEach((overlay) => {
+    map.value?.removeOverlay(overlay as Overlay);
+  });
+  popupOverlays.value = [];
 };
 const setOverlay = async (overlay: Overlay, plan: TravelPlanType) => {
   try {
@@ -409,6 +448,9 @@ const setOverlay = async (overlay: Overlay, plan: TravelPlanType) => {
       timeout: 3000,
     });
     await sleep(1000);
+    if (!popupOverlays.value.includes(overlay)) {
+      popupOverlays.value.push(overlay);
+    }
     map.value?.addOverlay(overlay);
     overlay.setPosition(
       fromLonLat([plan.location.coordinates.lng, plan.location.coordinates.lat])
@@ -450,7 +492,7 @@ onActivated(async () => {
     await mapInit();
   }
   await sleep(200);
-  loadPlanPositions();
+  loadPlanPositions(false);
   const travelplanId = route.query?.travelPlanId;
   if (travelplanId !== travelPlanId.value) {
     // 新的id重新加载
@@ -471,24 +513,27 @@ onActivated(async () => {
       id="createPlanMap"
       class="w-screen h-screen"
     ></div>
-    <OlPopup
-      v-for="(plan, index) in sortedPlans"
-      :key="plan.travelPlanId"
-      :position="plan.location.coordinates"
-      :visible="true"
-      :id="plan.travelPlanId"
-      :title="plan.title || plan.location.name"
-      :description="plan.description"
-      icon="iconamoon:location-duotone"
-      icon-color="red"
-      :repeat-offset="plan.description ? 40 : 20"
-      :closable="false"
-      :clickable="true"
-      :shadow-color="getPlanStatusColor(plan.status)"
-      :border-color="getPlanStatusColor(plan.status)"
-      @overlay-created="(o) => setOverlay(o, plan)"
-      @click="() => handlePopupClick(plan)"
-    ></OlPopup>
+    <template v-if="showPopups">
+      <OlPopup
+        v-for="(plan, index) in sortedPlans"
+        :key="'olpopup' + plan.travelPlanId"
+        :position="plan.location.coordinates"
+        :visible="true"
+        :id="plan.travelPlanId"
+        :title="plan.title || plan.location.name"
+        :description="plan.description"
+        icon="iconamoon:location-duotone"
+        icon-color="red"
+        :repeat-offset="plan.description ? 40 : 20"
+        :closable="false"
+        :clickable="true"
+        :shadow-color="getPlanStatusColor(plan.status)"
+        :border-color="getPlanStatusColor(plan.status)"
+        @overlay-created="(o) => setOverlay(o, plan)"
+        @click="() => handlePopupClick(plan)"
+      ></OlPopup>
+    </template>
+
     <LocationButton
       :map="map"
       @position="(p) => showPosition(p)"
@@ -513,9 +558,11 @@ onActivated(async () => {
       :visible="selectedAddress !== undefined"
     ></Placemark>
 
-    <div class="absolute left-4 top-4 right-4 flex gap-0 rounded-2xl shadow">
+    <div
+      class="absolute left-4 top-4 right-4 flex gap-0 rounded-2xl shadow z-[1001]"
+    >
       <van-search
-        v-model:model-value="searchValue"
+        v-model="searchValue"
         @update:model-value="debounceOnSearch"
         class="w-full"
         placeholder="搜索地点"
@@ -547,13 +594,14 @@ onActivated(async () => {
     </div>
     <div
       v-if="showAddressOptions"
-      class="absolute top-[50px] left-4 right-4 max-h-[260px] overflow-auto z-1001 thin-scrollbar bf-[var(--van-background)]"
+      class="absolute top-[50px] left-4 right-4 shadow-lg max-h-[260px] overflow-auto z-1001 thin-scrollbar bf-[var(--van-background)]"
     >
       <van-cell-group class="px-4">
         <van-cell
           v-for="(address, index) in addressOptions"
           :key="index"
           :title="address.name"
+          :label="address.address"
           @click="selectAddressOption(address)"
           clickable
         >
@@ -564,6 +612,7 @@ onActivated(async () => {
       v-if="selectedAddress"
       v-model:show="showSelectedAddressInfo"
       position="bottom"
+      z-index="1000"
       teleport="body"
       :overlay="false"
       closeable

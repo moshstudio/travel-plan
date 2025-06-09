@@ -271,6 +271,18 @@ onMounted(() => {
                   <van-icon name="location" />
                   <span>{{ plan.location.address }}</span>
                 </div>
+                <div
+                  v-if="plan.tags && plan.tags.length > 0"
+                  class="flex flex-wrap gap-1.5"
+                >
+                  <span
+                    v-for="(tag, index) in plan.tags"
+                    :key="index"
+                    class="tag text-xs px-2 py-0.5 bg-gray-100 text-gray-600 rounded-xl inline-flex items-center"
+                  >
+                    {{ tag }}
+                  </span>
+                </div>
                 <p
                   class="plan-desc"
                   v-if="plan.description"
