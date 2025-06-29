@@ -10,7 +10,7 @@ const props = defineProps<{
 // 总花费
 const totalExpense = computed(() => {
   return props.expenses.reduce(
-    (sum, expense) => sum + Number(expense.amount),
+    (sum, expense) => Number(sum) + Number(expense.amount),
     0
   );
 });
@@ -21,12 +21,12 @@ const expenseByTag = computed(() => {
 
   props.expenses.forEach((expense) => {
     expense.tags?.forEach((tag) => {
-      tagMap.set(tag, (tagMap.get(tag) || 0) + expense.amount);
+      tagMap.set(tag, (tagMap.get(tag) || 0) + Number(expense.amount));
     });
 
     // 如果没有标签，归类为"其他"
     if (!expense.tags || expense.tags.length === 0) {
-      tagMap.set("其他", (tagMap.get("其他") || 0) + expense.amount);
+      tagMap.set("其他", (tagMap.get("其他") || 0) + Number(expense.amount));
     }
   });
 
@@ -37,7 +37,7 @@ const expenseByTag = computed(() => {
 const expenseByPayment = computed(() => {
   return props.expenses.reduce((acc, expense) => {
     acc[expense.paymentMethod] =
-      (acc[expense.paymentMethod] || 0) + expense.amount;
+      (acc[expense.paymentMethod] || 0) + Number(expense.amount);
     return acc;
   }, {} as Record<TravelExpenseType["paymentMethod"], number>);
 });
@@ -133,13 +133,17 @@ const getExpenseMethodText = (
               <span class="text-gray-700 font-medium capitalize">
                 {{ getExpenseMethodText(method) }}
               </span>
-              <span class="font-medium">{{ Number(amount).toFixed(2) }} 元</span>
+              <span class="font-medium"
+                >{{ Number(amount).toFixed(2) }} 元</span
+              >
             </div>
             <div class="flex items-center">
               <div class="w-full bg-gray-100 rounded-full h-2.5 mr-2">
                 <div
                   class="bg-gradient-to-r from-amber-400 to-orange-400 h-2.5 rounded-full"
-                  :style="{ width: `${(Number(amount) / totalExpense) * 100}%` }"
+                  :style="{
+                    width: `${(Number(amount) / totalExpense) * 100}%`,
+                  }"
                 ></div>
               </div>
               <span class="text-xs text-gray-400"

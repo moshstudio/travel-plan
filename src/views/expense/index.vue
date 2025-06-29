@@ -114,7 +114,7 @@ const groupTotals = computed(() => {
     if (groupingMode.value === "currency") {
       // 货币分组时，每组只有一种货币
       totals[key] = {
-        amount: group.reduce((sum, item) => sum + item.amount, 0),
+        amount: group.reduce((sum, item) => sum + Number(item.amount), 0),
         currency: key,
       };
     } else {
@@ -124,7 +124,7 @@ const groupTotals = computed(() => {
         if (!currencyGroups[item.currency]) {
           currencyGroups[item.currency] = 0;
         }
-        currencyGroups[item.currency] += item.amount;
+        currencyGroups[item.currency] += Number(item.amount);
       });
       // 将多货币结果格式化为字符串
       totals[key] = {
@@ -145,7 +145,7 @@ const totalExpenses = computed(() => {
     if (!totals[item.currency]) {
       totals[item.currency] = 0;
     }
-    totals[item.currency] += item.amount;
+    totals[item.currency] += Number(item.amount);
   });
   return totals;
 });
@@ -159,7 +159,7 @@ const reimbursedExpenses = computed(() => {
       if (!totals[item.currency]) {
         totals[item.currency] = 0;
       }
-      totals[item.currency] += item.amount;
+      totals[item.currency] += Number(item.amount);
     });
   return totals;
 });

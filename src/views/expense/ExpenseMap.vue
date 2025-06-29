@@ -85,7 +85,7 @@ const selectedExpenseInfos = reactive({
 });
 
 const initParams = (expense: TravelExpenseType) => {
-  selectedExpenseInfos.amount = expense.amount;
+  selectedExpenseInfos.amount = Number(expense.amount);
   selectedExpenseInfos.currency = expense.currency;
   selectedExpenseInfos.tags = expense.tags || [];
   selectedExpenseInfos.description = expense.description || "";
@@ -211,6 +211,8 @@ const debounceOnSearch = _.debounce(onSearch, 500);
 async function selectAddressOption(address: AddressType) {
   searchValue.value = address.name;
   selectedAddress.value = address;
+  currentExpense.value = undefined;
+  showSelectedAddressInfo.value = true;
   mapSetViewOffset(
     map.value,
     address.coordinates.lng,
@@ -247,7 +249,7 @@ async function onCreateOrUpdateExpense() {
     // 创建
     const expenseData: Omit<TravelExpenseType, "id" | "expenseId"> = {
       travelId: currentTravel.value.travelId,
-      amount: selectedExpenseInfos.amount,
+      amount: Number(selectedExpenseInfos.amount),
       currency: selectedExpenseInfos.currency,
       tags: toRaw(selectedExpenseInfos.tags),
       description: selectedExpenseInfos.description,
@@ -268,6 +270,7 @@ async function onCreateOrUpdateExpense() {
       expenseId.value = addedExpense.expenseId;
       currentExpense.value = addedExpense;
       showSelectedAddressInfo.value = false;
+      selectedExpenseInfos.description = "";
       await sleep(500);
       showPopups.value = true;
       loadExpansePositions();
@@ -296,6 +299,7 @@ async function onCreateOrUpdateExpense() {
     await store.updateTravelExpense(expenseData);
     showSuccessToast("花费项更新成功");
     showSelectedAddressInfo.value = false;
+    selectedExpenseInfos.description = "";
     await sleep(500);
     showPopups.value = true;
     loadExpansePositions();
@@ -471,7 +475,7 @@ onActivated(async () => {
         :title="expense.location.name"
         :description="
           '￥' +
-          expense.amount +
+          Number(expense.amount) +
           (expense.description ? ' / ' + expense.description : '')
         "
         :repeat-offset="40"
@@ -515,7 +519,7 @@ onActivated(async () => {
       <van-search
         v-model="searchValue"
         @update:model-value="debounceOnSearch"
-        class="w-full"
+        class="w-full !py-1"
         placeholder="搜索地点"
         show-action
         :clearable="false"
@@ -569,7 +573,7 @@ onActivated(async () => {
       closeable
       round
     >
-      <div class="flex flex-col gap-1 p-6 pb-8 shadow">
+      <div class="flex flex-col gap-1 p-4 pb-6 shadow">
         <h2 class="mr-6">{{ selectedAddress.name }}</h2>
         <p class="text-[var(--van-text-color-2)] text-sm">
           {{ selectedAddress.address }}
@@ -586,12 +590,12 @@ onActivated(async () => {
         </div> -->
         <van-divider></van-divider>
         <div class="flex items-start justify-start gap-4">
-          <div class="text-nowrap text-sm mt-[2px]">金额</div>
+          <div class="text-nowrap text-sm mt-[6px]">金额</div>
           <div class="flex-grow flex flex-col min-w-0">
             <van-field
               v-model="selectedExpenseInfos.amount"
               placeholder="0.00"
-              class="!p-0 w-full ml-2"
+              class="!p-1 w-full ml-2"
             >
               <template #right-icon>
                 <Icon
@@ -610,7 +614,7 @@ onActivated(async () => {
                 size="small"
                 plain
                 type="primary"
-                @click="selectedExpenseInfos.amount = amount"
+                @click="() => (selectedExpenseInfos.amount = Number(amount))"
               >
                 {{ amount }}
               </van-button>
