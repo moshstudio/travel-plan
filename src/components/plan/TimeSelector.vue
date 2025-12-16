@@ -132,7 +132,7 @@ function init() {
 // 获取年份列
 function getYearColumns(currentYear: number) {
   const years = [];
-  for (let i = currentYear - 10; i <= currentYear; i++) {
+  for (let i = currentYear - 10; i <= currentYear + 5; i++) {
     years.push({ text: `${i}`, value: i });
   }
   return years;
